@@ -312,13 +312,15 @@ export function SignalCompact({
   showWeather = false,
   showTemperature = true,
   size: sizeName = 'md',
+  palette: passedPalette,
 }: CompactSkinProps) {
   const size = SIZE_DIMS[sizeName] ?? SIZE_DIMS.md;
-  const pal = useMemo(
+  const internalPal = useMemo(
     () =>
       lerpSignalPalette(SIGNAL_PALETTES[blend.phase], SIGNAL_PALETTES[blend.nextPhase], blend.t),
     [blend],
   );
+  const pal = { ...internalPal, bg: passedPalette.bg };
   const phaseColors = derivePhaseColors(blend, 'signal');
   const solar = useSolarPosition({
     latitude,

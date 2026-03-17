@@ -364,6 +364,7 @@ The slim pill/bar variant. Accepts an optional `design` prop to override the pro
 | `showFlag` | `boolean` | `false` | Show country flag |
 | `showTemperature` | `boolean` | `true` | Show live temperature |
 | `overridePhase` | `SolarPhase \| null` | — | Force a discrete phase |
+| `customPalettes` | `CustomPalettes` | — | Override bg gradient per phase |
 | `simulatedDate` | `Date` | — | Simulate a time |
 | `className` | `string` | — | Wrapper CSS class |
 
@@ -432,11 +433,39 @@ Use `simulatedDate` for realistic continuous previews. Use `phaseOverride` for s
 
 ## Custom Palettes
 
+Override the background gradient for any phase on any skin. Works on both `SolarWidget` and `CompactWidget`.
+
 ```tsx
 <SolarWidget
   customPalettes={{
     dawn:   { bg: ['#20122a', '#7f3b5d', '#f5a66e'] },
     sunset: { bg: ['#2e0f18', '#b84a3d', '#ffbe7a'] },
+  }}
+/>
+
+<CompactWidget
+  customPalettes={{
+    dawn:   { bg: ['#20122a', '#7f3b5d', '#f5a66e'] },
+    sunset: { bg: ['#2e0f18', '#b84a3d', '#ffbe7a'] },
+  }}
+/>
+```
+
+Each `bg` is a 3-stop gradient: `[top, middle, bottom]`. Only the phases you specify are overridden — the rest keep the skin's default colors. All skin-specific elements (orbs, glows, text, tracks) remain unchanged; only the background gradient is replaced.
+
+```tsx
+// Override every phase for a fully custom look
+<SolarWidget
+  customPalettes={{
+    midnight:     { bg: ['#ff0000', '#cc0000', '#990000'] },
+    night:        { bg: ['#00ff00', '#00cc00', '#009900'] },
+    dawn:         { bg: ['#0000ff', '#0000cc', '#000099'] },
+    sunrise:      { bg: ['#ffff00', '#cccc00', '#999900'] },
+    morning:      { bg: ['#ff00ff', '#cc00cc', '#990099'] },
+    'solar-noon': { bg: ['#00ffff', '#00cccc', '#009999'] },
+    afternoon:    { bg: ['#ff8800', '#cc6600', '#994400'] },
+    sunset:       { bg: ['#8800ff', '#6600cc', '#440099'] },
+    dusk:         { bg: ['#ff0088', '#cc0066', '#990044'] },
   }}
 />
 ```
@@ -548,6 +577,7 @@ import type {
   CompactSize,
   SkinDefinition,
   WidgetPalette,
+  CustomPalettes,
   SolarTheme,
 } from '@qodin-co/sol';
 ```

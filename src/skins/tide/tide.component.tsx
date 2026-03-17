@@ -710,6 +710,7 @@ export function TideWidget({
   className = '',
   liveWeatherCategory,
   liveTemperatureC,
+  palette: passedPalette,
 }: WidgetSkinProps & TideExtras) {
   const { coordsReady } = useSolarTheme();
   const [stored, setStored] = useState(true);
@@ -739,11 +740,12 @@ export function TideWidget({
   });
   const isDaytime = PHASE_IS_DAYTIME[phase] ?? solar.isDaytime;
   const progress = solar.isDaytime ? solar.dayProgress : solar.nightProgress;
-  const palette = lerpTideWidgetPalette(
+  const internalPalette = lerpTideWidgetPalette(
     TIDE_WIDGET_PALETTES[blend.phase],
     TIDE_WIDGET_PALETTES[blend.nextPhase],
     blend.t,
   );
+  const palette = { ...internalPalette, bg: passedPalette.bg };
   const phaseColors = derivePhaseColors(blend, 'tide');
 
   const liveWeather = useWeatherData(latitude ?? null, longitude ?? null);

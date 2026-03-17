@@ -526,15 +526,17 @@ export function FoundryCompact({
   showWeather = false,
   showTemperature = true,
   size: sizeName = 'md',
+  palette: passedPalette,
 }: CompactSkinProps) {
   const size = SIZE_DIMS[sizeName] ?? SIZE_DIMS.md;
   const SANS_DISPLAY = "'SF Pro Display','Helvetica Neue',sans-serif";
   const SANS_TEXT = "'SF Pro Text','Helvetica Neue',sans-serif";
 
-  const palette = useMemo(
+  const internalPalette = useMemo(
     () => lerpPalette(PALETTES[blend.phase], PALETTES[blend.nextPhase], blend.t),
     [blend],
   );
+  const palette = { ...internalPalette, bg: passedPalette.bg };
 
   const phaseColors = derivePhaseColors(blend, 'foundry');
 

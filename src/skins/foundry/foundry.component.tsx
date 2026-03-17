@@ -713,7 +713,7 @@ export interface FoundryExtras {
   temperatureOverride?: number | null;
   temperatureUnit?: 'C' | 'F';
   forceExpanded?: boolean;
-  customPalettes?: Partial<Record<SolarPhase, Partial<PhasePalette>>>;
+
   className?: string;
 }
 
@@ -733,7 +733,7 @@ export function FoundryWidget({
   temperatureOverride,
   temperatureUnit = 'C',
   forceExpanded,
-  customPalettes,
+  palette: passedPalette,
   className = '',
   liveWeatherCategory,
   liveTemperatureC,
@@ -772,10 +772,7 @@ export function FoundryWidget({
   const progressTarget = solar.isDaytime ? solar.dayProgress : solar.nightProgress;
 
   const rawPalette = lerpPalette(PALETTES[blend.phase], PALETTES[blend.nextPhase], blend.t);
-  const ov = customPalettes?.[phase];
-  const palette = ov
-    ? { ...rawPalette, ...ov, bg: (ov.bg ?? rawPalette.bg) as [string, string, string] }
-    : rawPalette;
+  const palette = { ...rawPalette, bg: passedPalette.bg };
   const phaseColors = derivePhaseColors(blend, 'foundry');
 
   const countryInfo = useMemo(() => {

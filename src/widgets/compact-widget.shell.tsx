@@ -15,6 +15,7 @@ import type { SolarBlend, SolarPhase } from '../hooks/useSolarPosition';
 import { lerpHex } from '../lib/solar-lerp';
 import { useSolarTheme } from '../provider/solar-theme-provider';
 import type { DesignMode, SkinDefinition, WidgetPalette } from '../skins/types/widget-skin.types';
+import type { CustomPalettes } from './solar-widget.shell';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -148,6 +149,8 @@ export interface CompactWidgetProps {
   latitude?: number | null;
   longitude?: number | null;
   timezone?: string | null;
+  /** Override background colors per phase */
+  customPalettes?: CustomPalettes;
   /** Explicit simulated date. Falls back to ctx.simulatedDate (from SolarDevTools)
    *  then to real current time. */
   simulatedDate?: Date;
@@ -193,6 +196,7 @@ export function CompactWidget({
   latitude,
   longitude,
   timezone,
+  customPalettes,
   simulatedDate: simulatedDateProp,
   className = '',
 }: CompactWidgetProps) {
@@ -214,7 +218,12 @@ export function CompactWidget({
     ? { phase: overridePhase, nextPhase: overridePhase, t: 0 }
     : ctx.blend;
 
-  const palette = useMemo(() => blendPalette(skin, blend), [skin, blend]);
+  const blendedPalette = useMemo(() => blendPalette(skin, blend), [skin, blend]);
+
+  const palette: WidgetPalette = useMemo(() => {
+    if (!customPalettes?.[phase]) return blendedPalette;
+    return { ...blendedPalette, bg: customPalettes[phase]?.bg };
+  }, [blendedPalette, customPalettes, phase]);
 
   const resolvedLat = latitude ?? ctx.latitude;
   const resolvedLon = longitude ?? ctx.longitude;

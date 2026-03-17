@@ -769,6 +769,7 @@ export function AuroraWidget({
   className = '',
   liveWeatherCategory,
   liveTemperatureC,
+  palette: passedPalette,
 }: WidgetSkinProps & AuroraExtras) {
   const { coordsReady } = useSolarTheme();
   const [storedExpanded, setStoredExpanded] = useState(true);
@@ -800,11 +801,12 @@ export function AuroraWidget({
   const currentArc = effectiveIsDaytime ? 'day' : 'night';
   const progressTarget = solar.isDaytime ? solar.dayProgress : solar.nightProgress;
 
-  const palette = lerpAuroraPalette(
+  const internalPalette = lerpAuroraPalette(
     AURORA_PALETTES[blend.phase],
     AURORA_PALETTES[blend.nextPhase],
     blend.t,
   );
+  const palette = { ...internalPalette, bg: passedPalette.bg };
   const phaseColors = derivePhaseColors(blend, 'aurora');
 
   const countryInfo = useMemo(() => {

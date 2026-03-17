@@ -358,11 +358,12 @@ export function MeridianCompact({
   showWeather = false,
   showTemperature = true,
   size: sizeName = 'md',
+  palette: passedPalette,
 }: CompactSkinProps) {
   const size = SIZE_DIMS[sizeName] ?? SIZE_DIMS.md;
   const SANS = "'Inter','SF Pro Display','Helvetica Neue',sans-serif";
 
-  const pal = useMemo(
+  const internalPal = useMemo(
     () =>
       lerpMeridianPalette(
         MERIDIAN_PALETTES[blend.phase],
@@ -371,6 +372,7 @@ export function MeridianCompact({
       ),
     [blend],
   );
+  const pal = { ...internalPal, bg: passedPalette.bg };
 
   const phaseColors = derivePhaseColors(blend, 'meridian');
 

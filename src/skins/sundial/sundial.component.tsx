@@ -663,6 +663,7 @@ export function SundialWidget({
   className = '',
   liveWeatherCategory,
   liveTemperatureC,
+  palette: passedPalette,
 }: WidgetSkinProps & SundialExtras) {
   const { coordsReady } = useSolarTheme();
   const [stored, setStored] = useState(true);
@@ -692,11 +693,12 @@ export function SundialWidget({
   });
   const isDaytime = PHASE_IS_DAYTIME[phase] ?? solar.isDaytime;
   const progress = solar.isDaytime ? solar.dayProgress : solar.nightProgress;
-  const palette = lerpSundialWidgetPalette(
+  const internalPalette = lerpSundialWidgetPalette(
     SUNDIAL_WIDGET_PALETTES[blend.phase],
     SUNDIAL_WIDGET_PALETTES[blend.nextPhase],
     blend.t,
   );
+  const palette = { ...internalPalette, bg: passedPalette.bg };
   const phaseColors = derivePhaseColors(blend, 'sundial');
 
   const liveWeather = useWeatherData(latitude ?? null, longitude ?? null);

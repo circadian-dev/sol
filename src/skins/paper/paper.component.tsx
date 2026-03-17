@@ -636,6 +636,7 @@ export function PaperWidget({
   blend,
   expandDirection = 'top-right',
   size = 'lg',
+  palette: passedPalette,
   showFlag = false,
   showWeather = false,
   hoverEffect = true,
@@ -682,11 +683,12 @@ export function PaperWidget({
   const currentArc = effectiveIsDaytime ? 'day' : 'night';
   const progressTarget = solar.isDaytime ? solar.dayProgress : solar.nightProgress;
 
-  const palette = lerpPaperPalette(
+  const internalPalette = lerpPaperPalette(
     PAPER_PALETTES[blend.phase],
     PAPER_PALETTES[blend.nextPhase],
     blend.t,
   );
+  const palette = { ...internalPalette, bg: passedPalette.bg };
   const phaseColors = derivePhaseColors(blend, 'paper');
 
   const countryInfo = useMemo(() => {

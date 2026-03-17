@@ -439,14 +439,19 @@ export function VoidCompact({
   showWeather = false,
   showTemperature = true,
   size: sizeName = 'md',
+  palette: passedPalette,
 }: CompactSkinProps) {
   const size = SIZE_DIMS[sizeName] ?? SIZE_DIMS.md;
   const SANS = "'Inter','SF Pro Display','Helvetica Neue',sans-serif";
 
-  const pal = useMemo(
+  const internalPal = useMemo(
     () => lerpVoidPalette(VOID_PALETTES[blend.phase], VOID_PALETTES[blend.nextPhase], blend.t),
     [blend],
   );
+  const pal = {
+    ...internalPal,
+    bg: [passedPalette.bg[0], passedPalette.bg[1]] as [string, string],
+  };
 
   const phaseColors = derivePhaseColors(blend, 'void');
   const solar = useSolarPosition({

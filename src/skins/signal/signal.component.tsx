@@ -551,6 +551,7 @@ export function SignalWidget({
   className = '',
   liveWeatherCategory,
   liveTemperatureC,
+  palette: passedPalette,
 }: WidgetSkinProps & SignalExtras) {
   const { coordsReady } = useSolarTheme();
   const [storedExpanded, setStoredExpanded] = useState(true);
@@ -582,11 +583,12 @@ export function SignalWidget({
   const currentArc = effectiveIsDaytime ? 'day' : 'night';
   const progressTarget = solar.isDaytime ? solar.dayProgress : solar.nightProgress;
 
-  const palette = lerpSignalPalette(
+  const internalPalette = lerpSignalPalette(
     SIGNAL_PALETTES[blend.phase],
     SIGNAL_PALETTES[blend.nextPhase],
     blend.t,
   );
+  const palette = { ...internalPalette, bg: passedPalette.bg };
   const phaseColors = derivePhaseColors(blend, 'signal');
 
   // Country code — two-letter ISO code rendered as terminal text field

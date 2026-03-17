@@ -634,6 +634,7 @@ export function MeridianWidget({
   className = '',
   liveWeatherCategory,
   liveTemperatureC,
+  palette: passedPalette,
 }: WidgetSkinProps & MeridianExtras) {
   const { coordsReady } = useSolarTheme();
   const [storedExpanded, setStoredExpanded] = useState(true);
@@ -666,11 +667,12 @@ export function MeridianWidget({
   const currentArc = effectiveIsDaytime ? 'day' : 'night';
   const progressTarget = solar.isDaytime ? solar.dayProgress : solar.nightProgress;
 
-  const palette = lerpMeridianPalette(
+  const internalPalette = lerpMeridianPalette(
     MERIDIAN_PALETTES[blend.phase],
     MERIDIAN_PALETTES[blend.nextPhase],
     blend.t,
   );
+  const palette = { ...internalPalette, bg: passedPalette.bg };
   const phaseColors = derivePhaseColors(blend, 'meridian');
 
   const countryInfo = useMemo(() => {

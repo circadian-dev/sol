@@ -568,16 +568,18 @@ export function SundialCompact({
   showWeather = false,
   showTemperature = true,
   size: sizeName = 'md',
+  palette: passedPalette,
 }: CompactSkinProps) {
   const size = SIZE_DIMS[sizeName] ?? SIZE_DIMS.md;
   const SERIF = "'Palatino Linotype','Palatino','Book Antiqua','Georgia',serif";
   const SANS = "'Inter','SF Pro Display','Helvetica Neue',sans-serif";
 
-  const pal = useMemo(
+  const internalPal = useMemo(
     () =>
       lerpSundialPalette(SUNDIAL_PALETTES[blend.phase], SUNDIAL_PALETTES[blend.nextPhase], blend.t),
     [blend],
   );
+  const pal = { ...internalPal, bg: passedPalette.bg };
 
   const phaseColors = derivePhaseColors(blend, 'sundial');
   const solar = useSolarPosition({

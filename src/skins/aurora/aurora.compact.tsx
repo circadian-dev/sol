@@ -552,11 +552,16 @@ export function AuroraCompact({
   showFlag = false,
   showWeather = false,
   size: sizeName = 'md',
+  palette: passedPalette,
 }: CompactSkinProps) {
   const size = SIZE_DIMS[sizeName] ?? SIZE_DIMS.md;
   const SANS = "'SF Pro Text','Helvetica Neue',sans-serif";
 
-  const pal = useMemo(() => lerpAur(AUR[blend.phase], AUR[blend.nextPhase], blend.t), [blend]);
+  const internalPal = useMemo(
+    () => lerpAur(AUR[blend.phase], AUR[blend.nextPhase], blend.t),
+    [blend],
+  );
+  const pal = { ...internalPal, bg: passedPalette.bg };
 
   const phaseColors = derivePhaseColors(blend, 'aurora');
 

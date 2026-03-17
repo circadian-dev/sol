@@ -584,14 +584,16 @@ export function TideCompact({
   showWeather = false,
   showTemperature = true,
   size: sizeName = 'md',
+  palette: passedPalette,
 }: CompactSkinProps) {
   const size = SIZE_DIMS[sizeName] ?? SIZE_DIMS.md;
   const SANS = "'Inter Condensed','Barlow Condensed','SF Pro Display','Helvetica Neue',sans-serif";
 
-  const pal = useMemo(
+  const internalPal = useMemo(
     () => lerpTidePalette(TIDE_PALETTES[blend.phase], TIDE_PALETTES[blend.nextPhase], blend.t),
     [blend],
   );
+  const pal = { ...internalPal, bg: passedPalette.bg };
 
   const phaseColors = derivePhaseColors(blend, 'tide');
   const solar = useSolarPosition({

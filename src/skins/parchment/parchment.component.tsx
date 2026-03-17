@@ -512,6 +512,7 @@ export function ParchmentWidget({
   temperatureUnit = 'C',
   forceExpanded,
   className = '',
+  palette: passedPalette,
   liveWeatherCategory,
   liveTemperatureC,
 }: WidgetSkinProps & ParchmentExtras) {
@@ -685,7 +686,7 @@ export function ParchmentWidget({
                   overflow: 'hidden',
                   border: `1px solid ${N_BORDER_MED}`,
                   boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 2px 8px rgba(0,0,0,0.04)',
-                  background: N_SURFACE,
+                  background: `linear-gradient(135deg, ${passedPalette.bg[0]} 0%, ${passedPalette.bg[1]} 50%, ${passedPalette.bg[2]} 100%)`,
                 }}
               >
                 {/* z=0  Phase semantic wash — faint Notion tag-palette tint */}

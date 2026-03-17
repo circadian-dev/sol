@@ -500,6 +500,7 @@ export function VoidWidget({
   temperatureOverride,
   temperatureUnit = 'C',
   forceExpanded,
+  palette: passedPalette,
   className = '',
   liveWeatherCategory,
   liveTemperatureC,
@@ -532,11 +533,12 @@ export function VoidWidget({
   });
   const isDaytime = PHASE_IS_DAYTIME[phase] ?? solar.isDaytime;
   const progress = solar.isDaytime ? solar.dayProgress : solar.nightProgress;
-  const palette = lerpVoidWidgetPalette(
+  const internalPalette = lerpVoidWidgetPalette(
     VOID_WIDGET_PALETTES[blend.phase],
     VOID_WIDGET_PALETTES[blend.nextPhase],
     blend.t,
   );
+  const palette = { ...internalPalette, bg: passedPalette.bg };
   const phaseColors = derivePhaseColors(blend, 'void');
 
   const liveWeather = useWeatherData(latitude ?? null, longitude ?? null);

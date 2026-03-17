@@ -432,6 +432,7 @@ export function ParchmentCompact({
   showWeather = false,
   showTemperature = true,
   size: sizeName = 'md',
+  palette: passedPalette,
 }: CompactSkinProps) {
   const size = SIZE_DIMS[sizeName] ?? SIZE_DIMS.md;
 
@@ -494,7 +495,7 @@ export function ParchmentCompact({
         overflow: 'hidden',
         border: `1px solid ${N_BORDER_MED}`,
         boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-        background: N_SURFACE,
+        background: `linear-gradient(135deg, ${passedPalette.bg[0]} 0%, ${passedPalette.bg[1]} 50%, ${passedPalette.bg[2]} 100%)`,
         cursor: 'default',
         userSelect: 'none',
       }}

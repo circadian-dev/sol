@@ -799,6 +799,7 @@ export function MineralWidget({
   className = '',
   liveWeatherCategory,
   liveTemperatureC,
+  palette: passedPalette,
 }: WidgetSkinProps & MineralExtras) {
   const { coordsReady } = useSolarTheme();
   const [storedExpanded, setStoredExpanded] = useState(true);
@@ -831,11 +832,12 @@ export function MineralWidget({
   const progressTarget = solar.isDaytime ? solar.dayProgress : solar.nightProgress;
   const isDarkGem = !effectiveIsDaytime;
 
-  const palette = lerpMineralPalette(
+  const internalPalette = lerpMineralPalette(
     MINERAL_PALETTES[blend.phase],
     MINERAL_PALETTES[blend.nextPhase],
     blend.t,
   );
+  const palette = { ...internalPalette, bg: passedPalette.bg };
   const phaseColors = derivePhaseColors(blend, 'mineral');
 
   // ── Flag — code + name only; PillFlagBadge handles rendering ──────────────
