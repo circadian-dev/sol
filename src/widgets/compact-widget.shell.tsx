@@ -205,6 +205,12 @@ export function CompactWidget({
 
   const ctx = useSolarTheme();
 
+  // Register customPalettes into context so DevTools can read them
+  useEffect(() => {
+    ctx.setCustomPalettes(customPalettes);
+    return () => ctx.setCustomPalettes(undefined);
+  }, [customPalettes, ctx.setCustomPalettes]);
+
   // prop wins → context (devtools) → undefined (live)
   const simulatedDate = simulatedDateProp ?? ctx.simulatedDate;
 

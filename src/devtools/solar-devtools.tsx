@@ -88,7 +88,8 @@ function DevToolsInner({
   defaultOpen: boolean;
   position: 'bottom-left' | 'bottom-center' | 'bottom-right';
 }) {
-  const { setOverridePhase, setSimulatedDate, activeSkin, solarPosition } = useSolarTheme();
+  const { setOverridePhase, setSimulatedDate, activeSkin, solarPosition, customPalettes } =
+    useSolarTheme();
 
   // ── Open / collapsed ────────────────────────────────────────────────────────
   const [open, setOpen] = useState(() => getStoredOpen(defaultOpen));
@@ -169,8 +170,17 @@ function DevToolsInner({
     [setSimulatedDate],
   );
 
-  // ── Skin-aware palettes ─────────────────────────────────────────────────────
-  const activePalettes = activeSkin.widgetPalettes;
+  // ── Skin-aware palettes (merged with customPalettes from widgets) ─────────
+  const activePalettes = useMemo(() => {
+    const base = activeSkin.widgetPalettes;
+    if (!customPalettes) return base;
+    const merged = {} as Record<SolarPhase, (typeof base)[SolarPhase]>;
+    for (const phase of Object.keys(base) as SolarPhase[]) {
+      const cp = customPalettes[phase];
+      merged[phase] = cp?.bg ? { ...base[phase], bg: cp.bg } : base[phase];
+    }
+    return merged;
+  }, [activeSkin.widgetPalettes, customPalettes]);
   const currentPalette = activePalettes[sliderPhase];
   const gradient = useMemo(() => buildSliderGradient(activePalettes), [activePalettes]);
 

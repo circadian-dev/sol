@@ -38,6 +38,7 @@ import { getSessionPhaseOverride, setSessionPhaseOverride } from '../lib/solar-p
 import { getBrowserTimezone, getCentroidForTimezone } from '../lib/tz-centroids';
 import { type DesignMode, SKINS, type SkinDefinition } from '../skins/index';
 import { SKIN_COPY } from '../widgets/skin-copy';
+import type { CustomPalettes } from '../widgets/solar-widget.shell';
 
 // ─── Context shape ────────────────────────────────────────────────────────────
 
@@ -61,6 +62,9 @@ export interface SolarTheme {
    *  Widgets read this as a fallback when no simulatedDate prop is passed. */
   simulatedDate: Date | undefined;
   setSimulatedDate: (date: Date | undefined) => void;
+  /** Custom palette overrides registered by the nearest widget. */
+  customPalettes: CustomPalettes | undefined;
+  setCustomPalettes: (palettes: CustomPalettes | undefined) => void;
 }
 
 // ─── Static lookups ───────────────────────────────────────────────────────────
@@ -268,6 +272,8 @@ const SolarThemeCtx = createContext<SolarTheme>({
   activeSkin: SSR_SKIN,
   simulatedDate: undefined,
   setSimulatedDate: noop,
+  customPalettes: undefined,
+  setCustomPalettes: noop,
 });
 
 export function useSolarTheme(): SolarTheme {
@@ -310,6 +316,9 @@ export function SolarThemeProvider({
 
   // ── Simulated date — set by SolarDevTools when scrubbing ──────────────────
   const [simulatedDate, setSimulatedDate] = useState<Date | undefined>(undefined);
+
+  // ── Custom palettes — registered by widgets so DevTools can read them ─────
+  const [customPalettes, setCustomPalettes] = useState<CustomPalettes | undefined>(undefined);
 
   // ── Design state ─────────────────────────────────────────────────────────────
   // Always use the server-provided initialDesign for first render to avoid
@@ -467,6 +476,8 @@ export function SolarThemeProvider({
     activeSkin,
     simulatedDate,
     setSimulatedDate,
+    customPalettes,
+    setCustomPalettes,
   };
 
   if (isolated) {

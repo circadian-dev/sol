@@ -187,7 +187,14 @@ export function SolarWidget({
     latitude,
     longitude,
     simulatedDate: ctxSimulatedDate,
+    setCustomPalettes,
   } = useSolarTheme();
+
+  // Register customPalettes into context so DevTools can read them
+  useEffect(() => {
+    setCustomPalettes(customPalettes);
+    return () => setCustomPalettes(undefined);
+  }, [customPalettes, setCustomPalettes]);
 
   // prop wins → context (devtools) → undefined (live)
   const simulatedDate = simulatedDateProp ?? ctxSimulatedDate;
