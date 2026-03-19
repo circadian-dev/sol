@@ -28,7 +28,7 @@ export interface ShaderImage {
   objectPosition?: string;
 }
 
-// ─── Shader palette (fed to SolarShaderBg / QodinHeroShader) ─────────────────
+// ─── Shader palette (fed to SolarShaderBg) ───────────────────────────────────
 
 export interface ShaderPalette {
   colors: [string, string, string, string];

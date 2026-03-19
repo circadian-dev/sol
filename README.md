@@ -1,21 +1,21 @@
 <div align="center">
 
-<img src=".github/banner.png" alt="@qodin-co/sol — solar-aware React widgets" width="100%" />
+<img src=".github/banner.png" alt="@circadian/sol — solar-aware React widgets" width="100%" />
 
 <br />
 <br />
 
-<a href="https://www.npmjs.com/package/@qodin-co/sol">
-  <img src="https://img.shields.io/npm/v/@qodin-co/sol?style=flat-square&color=111&labelColor=111&logo=npm" alt="npm version" />
+<a href="https://www.npmjs.com/package/@circadian/sol">
+  <img src="https://img.shields.io/npm/v/@circadian/sol?style=flat-square&color=111&labelColor=111&logo=npm" alt="npm version" />
 </a>
-<a href="https://www.npmjs.com/package/@qodin-co/sol">
-  <img src="https://img.shields.io/npm/dm/@qodin-co/sol?style=flat-square&color=111&labelColor=111" alt="npm downloads" />
+<a href="https://www.npmjs.com/package/@circadian/sol">
+  <img src="https://img.shields.io/npm/dm/@circadian/sol?style=flat-square&color=111&labelColor=111" alt="npm downloads" />
 </a>
-<a href="https://github.com/qodin-co/sol/blob/main/LICENSE">
-  <img src="https://img.shields.io/npm/l/@qodin-co/sol?style=flat-square&color=111&labelColor=111" alt="license" />
+<a href="https://github.com/circadian-dev/sol/blob/main/LICENSE">
+  <img src="https://img.shields.io/npm/l/@circadian/sol?style=flat-square&color=111&labelColor=111" alt="license" />
 </a>
-<a href="https://github.com/qodin-co/sol/actions/workflows/validate.yml">
-  <img src="https://img.shields.io/github/actions/workflow/status/qodin-co/sol/validate.yml?style=flat-square&color=111&labelColor=111&label=ci" alt="CI" />
+<a href="https://github.com/circadian-dev/sol/actions/workflows/validate.yml">
+  <img src="https://img.shields.io/github/actions/workflow/status/circadian-dev/sol/validate.yml?style=flat-square&color=111&labelColor=111&label=ci" alt="CI" />
 </a>
 
 <br />
@@ -23,7 +23,7 @@
 
 **Solar-aware React widgets that follow the real position of the sun.**
 
-[npm](https://www.npmjs.com/package/@qodin-co/sol) · [GitHub](https://github.com/qodin-co/sol)
+[npm](https://www.npmjs.com/package/@circadian/sol) · [GitHub](https://github.com/circadian-dev/sol) · [circadian.dev](https://circadian.dev)
 
 </div>
 
@@ -37,15 +37,17 @@ Sol replaces that with something alive. It computes the sun's real position from
 
 No API key. No manual toggle. Your UI just follows the sun.
 
+Sol is the flagship package from [Circadian](https://circadian.dev) — a platform for ambient-aware UI.
+
 ---
 
 ```bash
-bun add @qodin-co/sol
+bun add @circadian/sol
 # or
-npm install @qodin-co/sol
+npm install @circadian/sol
 ```
 
-`@qodin-co/sol` gives you a full `SolarWidget`, a `CompactWidget`, 10 skins, 9 solar phases, optional live weather, optional flag display, and a dev-only timeline scrubber via `SolarDevTools`. Solar position is computed locally from latitude, longitude, timezone, and current time — no solar API required.
+`@circadian/sol` gives you a full `SolarWidget`, a `CompactWidget`, 10 skins, 9 solar phases, optional live weather, optional flag display, and a dev-only timeline scrubber via `SolarDevTools`. Solar position is computed locally from latitude, longitude, timezone, and current time — no solar API required.
 
 ---
 
@@ -75,7 +77,7 @@ No special setup needed. Wrap your app with the provider and use widgets directl
 // main.tsx
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { SolarThemeProvider } from '@qodin-co/sol';
+import { SolarThemeProvider } from '@circadian/sol';
 import App from './App';
 
 createRoot(document.getElementById('root')!).render(
@@ -89,7 +91,7 @@ createRoot(document.getElementById('root')!).render(
 
 ```tsx
 // App.tsx
-import { SolarWidget } from '@qodin-co/sol';
+import { SolarWidget } from '@circadian/sol';
 
 export default function App() {
   return <SolarWidget showWeather showFlag />;
@@ -105,7 +107,7 @@ Add `'use client'` at the top of any file that uses Sol. This marks it as a clie
 ```tsx
 // components/providers.tsx
 'use client';
-import { SolarThemeProvider } from '@qodin-co/sol';
+import { SolarThemeProvider } from '@circadian/sol';
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   return (
@@ -119,7 +121,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
 ```tsx
 // components/solar-widget.tsx
 'use client';
-import { SolarWidget } from '@qodin-co/sol';
+import { SolarWidget } from '@circadian/sol';
 
 export default function Solar() {
   return <SolarWidget showWeather showFlag />;
@@ -158,7 +160,7 @@ Name any file that uses Sol with a `.client.tsx` extension. Remix excludes `.cli
 
 ```tsx
 // app/components/providers.client.tsx
-import { SolarThemeProvider } from '@qodin-co/sol';
+import { SolarThemeProvider } from '@circadian/sol';
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   return (
@@ -171,7 +173,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
 
 ```tsx
 // app/components/solar-widget.client.tsx
-import { SolarWidget } from '@qodin-co/sol';
+import { SolarWidget } from '@circadian/sol';
 
 export default function Solar() {
   return <SolarWidget showWeather showFlag />;
@@ -213,7 +215,7 @@ Use the `ClientOnly` component from `@tanstack/react-router` to prevent Sol from
 ```tsx
 // app/components/solar-widget.tsx
 import { ClientOnly } from '@tanstack/react-router';
-import { SolarThemeProvider, SolarWidget } from '@qodin-co/sol';
+import { SolarThemeProvider, SolarWidget } from '@circadian/sol';
 
 export default function Solar() {
   return (
@@ -243,7 +245,7 @@ Name any file that uses Sol with a `.client.tsx` extension. Blade runs pages ser
 
 ```tsx
 // components/providers.client.tsx
-import { SolarThemeProvider } from '@qodin-co/sol';
+import { SolarThemeProvider } from '@circadian/sol';
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   return (
@@ -256,7 +258,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
 
 ```tsx
 // components/solar-widget.client.tsx
-import { SolarWidget } from '@qodin-co/sol';
+import { SolarWidget } from '@circadian/sol';
 
 export default function Solar() {
   return <SolarWidget showWeather showFlag />;
@@ -453,23 +455,6 @@ Override the background gradient for any phase on any skin. Works on both `Solar
 
 Each `bg` is a 3-stop gradient: `[top, middle, bottom]`. Only the phases you specify are overridden — the rest keep the skin's default colors. All skin-specific elements (orbs, glows, text, tracks) remain unchanged; only the background gradient is replaced.
 
-```tsx
-// Override every phase for a fully custom look
-<SolarWidget
-  customPalettes={{
-    midnight:     { bg: ['#ff0000', '#cc0000', '#990000'] },
-    night:        { bg: ['#00ff00', '#00cc00', '#009900'] },
-    dawn:         { bg: ['#0000ff', '#0000cc', '#000099'] },
-    sunrise:      { bg: ['#ffff00', '#cccc00', '#999900'] },
-    morning:      { bg: ['#ff00ff', '#cc00cc', '#990099'] },
-    'solar-noon': { bg: ['#00ffff', '#00cccc', '#009999'] },
-    afternoon:    { bg: ['#ff8800', '#cc6600', '#994400'] },
-    sunset:       { bg: ['#8800ff', '#6600cc', '#440099'] },
-    dusk:         { bg: ['#ff0088', '#cc0066', '#990044'] },
-  }}
-/>
-```
-
 ---
 
 ## SolarDevTools
@@ -479,7 +464,7 @@ When your interface depends on live solar time, manual testing breaks down fast 
 Imported from a dedicated subpath — never included in production bundles unless explicitly imported.
 
 ```tsx
-import { SolarDevTools } from '@qodin-co/sol/devtools';
+import { SolarDevTools } from '@circadian/sol/devtools';
 
 // Vite
 {import.meta.env.DEV && <SolarDevTools />}
@@ -491,8 +476,8 @@ import { SolarDevTools } from '@qodin-co/sol/devtools';
 ### Full example
 
 ```tsx
-import { SolarThemeProvider, SolarWidget } from '@qodin-co/sol';
-import { SolarDevTools } from '@qodin-co/sol/devtools';
+import { SolarThemeProvider, SolarWidget } from '@circadian/sol';
+import { SolarDevTools } from '@circadian/sol/devtools';
 
 export default function Demo() {
   return (
@@ -519,7 +504,7 @@ export default function Demo() {
 ## useSolarTheme
 
 ```tsx
-import { useSolarTheme } from '@qodin-co/sol';
+import { useSolarTheme } from '@circadian/sol';
 
 function DebugPanel() {
   const { phase, timezone, latitude, longitude, design } = useSolarTheme();
@@ -579,7 +564,7 @@ import type {
   WidgetPalette,
   CustomPalettes,
   SolarTheme,
-} from '@qodin-co/sol';
+} from '@circadian/sol';
 ```
 
 ---
@@ -617,6 +602,6 @@ Sol is actively being developed. Things in progress:
 
 <div align="center">
 
-MIT © [qodin](https://github.com/qodin-co)
+MIT © [Circadian] - website coming soon
 
 </div>

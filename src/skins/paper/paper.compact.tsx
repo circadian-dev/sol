@@ -39,6 +39,7 @@ import * as ct from 'countries-and-timezones';
 import { motion } from 'motion/react';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useSolarPosition } from '../../hooks/useSolarPosition';
+import { CONTENT_FADE } from '../../shared/content-fade';
 import { CompactFlagBadge } from '../../shared/flag-badge';
 import {
   WEATHER_ORB_DIM,
@@ -526,15 +527,19 @@ export function PaperCompact({
       />
 
       {/* z=3  Weather backdrop */}
-      {showWeather && effectiveWeatherCategory && (
-        <div style={{ position: 'absolute', inset: 0, zIndex: 3 }}>
+      <motion.div
+        animate={{ opacity: showWeather && effectiveWeatherCategory ? 1 : 0 }}
+        transition={CONTENT_FADE}
+        style={{ position: 'absolute', inset: 0, zIndex: 3 }}
+      >
+        {showWeather && effectiveWeatherCategory && (
           <WeatherBackdrop
             category={effectiveWeatherCategory}
             skin="paper"
             phaseColors={phaseColors}
           />
-        </div>
-      )}
+        )}
+      </motion.div>
 
       {/* z=4  Weather layer */}
       {showWeather && effectiveWeatherCategory && effectiveWeatherCategory !== 'clear' && (
@@ -604,15 +609,23 @@ export function PaperCompact({
              * highlight=pal.textPrimary gives the bright end of the duotone
              * the same warm-ink tone as the card's primary text colour.
              */}
-            {showFlag && countryCode && (
-              <CompactFlagBadge
-                code={countryCode}
-                skin="paper"
-                mode={pal.mode}
-                accent={pal.accentColor}
-                shadow={pal.bg[0]}
-                highlight={pal.textPrimary}
-              />
+            {showFlag && (
+              <motion.span
+                animate={{ opacity: countryCode ? 1 : 0 }}
+                transition={CONTENT_FADE}
+                style={{ display: 'flex', alignItems: 'center', width: 16, flexShrink: 0 }}
+              >
+                {countryCode && (
+                  <CompactFlagBadge
+                    code={countryCode}
+                    skin="paper"
+                    mode={pal.mode}
+                    accent={pal.accentColor}
+                    shadow={pal.bg[0]}
+                    highlight={pal.textPrimary}
+                  />
+                )}
+              </motion.span>
             )}
           </div>
 
@@ -633,7 +646,7 @@ export function PaperCompact({
                 {time}
               </motion.span>
             )}
-            {showTemperature && tempStr && (
+            {showTemperature && (
               <motion.span
                 style={{
                   fontFamily: serifFam,
@@ -641,11 +654,12 @@ export function PaperCompact({
                   fontSize: size.labelSize,
                   lineHeight: 1,
                   fontWeight: 500,
+                  minWidth: 24,
                 }}
-                animate={{ color: pal.textPrimary }}
-                transition={{ duration: 1.2 }}
+                animate={{ color: pal.textPrimary, opacity: tempStr ? 1 : 0 }}
+                transition={CONTENT_FADE}
               >
-                {tempStr}
+                {tempStr || '\u00A0'}
               </motion.span>
             )}
           </div>

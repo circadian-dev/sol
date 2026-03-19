@@ -66,6 +66,7 @@ import { motion } from 'motion/react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { type SolarPhase, useSolarPosition } from '../../hooks/useSolarPosition';
 import { lerpColor } from '../../lib/solar-lerp';
+import { CONTENT_FADE } from '../../shared/content-fade';
 import { CompactFlagBadge } from '../../shared/flag-badge';
 import {
   WEATHER_ORB_DIM,
@@ -655,27 +656,40 @@ export function TideCompact({
       transition={{ duration: 1.6, ease: 'easeInOut' }}
     >
       {/* z=2 Weather backdrop */}
-      {showWeather && effectiveWeatherCategory && (
-        <div style={{ position: 'absolute', inset: 0, zIndex: 2 }}>
+      <motion.div
+        style={{ position: 'absolute', inset: 0, zIndex: 2 }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: showWeather && effectiveWeatherCategory ? 1 : 0 }}
+        transition={CONTENT_FADE}
+      >
+        {showWeather && effectiveWeatherCategory && (
           <WeatherBackdrop
             category={effectiveWeatherCategory}
             skin="tide"
             phaseColors={phaseColors}
           />
-        </div>
-      )}
+        )}
+      </motion.div>
 
       {/* z=3 Weather layer */}
-      {showWeather && effectiveWeatherCategory && effectiveWeatherCategory !== 'clear' && (
-        <div style={{ position: 'absolute', inset: 0, zIndex: 3 }}>
+      <motion.div
+        style={{ position: 'absolute', inset: 0, zIndex: 3 }}
+        initial={{ opacity: 0 }}
+        animate={{
+          opacity:
+            showWeather && effectiveWeatherCategory && effectiveWeatherCategory !== 'clear' ? 1 : 0,
+        }}
+        transition={CONTENT_FADE}
+      >
+        {showWeather && effectiveWeatherCategory && effectiveWeatherCategory !== 'clear' && (
           <WeatherLayer
             category={effectiveWeatherCategory}
             skin="tide"
             opacity={effectiveWeatherCategory === 'thunder' ? 0.55 : 0.4}
             phaseColors={phaseColors}
           />
-        </div>
-      )}
+        )}
+      </motion.div>
 
       {/* z=4 3-row content */}
       <div
@@ -725,16 +739,24 @@ export function TideCompact({
              * glow=orbGlow:       passed through; CompactFlagBadge doesn't render
              *                     a halo but accepts the prop for API consistency
              */}
-            {showFlag && countryInfo && (
-              <CompactFlagBadge
-                code={countryInfo.code}
-                skin="tide"
-                mode={pal.mode}
-                accent={pal.accentColor}
-                shadow={pal.shadow}
-                highlight={pal.textPrimary}
-                glow={pal.orbGlow}
-              />
+            {showFlag && (
+              <motion.span
+                animate={{ opacity: countryInfo ? 1 : 0 }}
+                transition={CONTENT_FADE}
+                style={{ display: 'inline-flex', alignItems: 'center', width: 18, flexShrink: 0 }}
+              >
+                {countryInfo && (
+                  <CompactFlagBadge
+                    code={countryInfo.code}
+                    skin="tide"
+                    mode={pal.mode}
+                    accent={pal.accentColor}
+                    shadow={pal.shadow}
+                    highlight={pal.textPrimary}
+                    glow={pal.orbGlow}
+                  />
+                )}
+              </motion.span>
             )}
           </div>
 
@@ -755,7 +777,7 @@ export function TideCompact({
                 {time}
               </motion.span>
             )}
-            {showTemperature && tempStr && (
+            {showTemperature && (
               <motion.span
                 style={{
                   fontFamily: SANS,
@@ -763,11 +785,12 @@ export function TideCompact({
                   letterSpacing: '0.06em',
                   fontWeight: 500,
                   lineHeight: 1,
+                  minWidth: 24,
                 }}
-                animate={{ color: pal.accentColor }}
+                animate={{ color: pal.accentColor, opacity: tempStr ? 1 : 0 }}
                 transition={{ duration: 1.6 }}
               >
-                {tempStr}
+                {tempStr || '\u00A0'}
               </motion.span>
             )}
           </div>

@@ -58,6 +58,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { type SolarPhase, useSolarPosition } from '../../hooks/useSolarPosition';
 import { useSolarTheme } from '../../provider/solar-theme-provider';
+import { CONTENT_FADE } from '../../shared/content-fade';
 import { PillFlagBadge } from '../../shared/flag-badge';
 import { PillWeatherGlyph } from '../../shared/pill-weather-glyphs';
 import {
@@ -594,6 +595,13 @@ export function ParchmentWidget({
   const pillShowWeather =
     showWeather && effectiveWeatherCategory != null && effectiveWeatherCategory !== 'clear';
 
+  const pillMinWidth = useMemo(() => {
+    let w = 82;
+    if (showWeather) w += 36;
+    if (showFlag) w += 28;
+    return w;
+  }, [showWeather, showFlag]);
+
   // Country info — code for FlagBadge, name + raw FC for expanded chip
   const countryInfo = useMemo(() => {
     if (!timezone) return null;
@@ -710,15 +718,20 @@ export function ParchmentWidget({
                  * tint (z=2) then layers on top to bring the weather indication
                  * back into Notion's own colour vocabulary.
                  */}
-                {showWeather && effectiveWeatherCategory && (
-                  <div style={{ position: 'absolute', inset: 0, zIndex: 1, opacity: 0.28 }}>
+                <motion.div
+                  style={{ position: 'absolute', inset: 0, zIndex: 1 }}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: showWeather && effectiveWeatherCategory ? 0.28 : 0 }}
+                  transition={CONTENT_FADE}
+                >
+                  {showWeather && effectiveWeatherCategory && (
                     <WeatherBackdrop
                       category={effectiveWeatherCategory}
                       skin="parchment"
                       phaseColors={phaseColors}
                     />
-                  </div>
-                )}
+                  )}
+                </motion.div>
 
                 {/*
                  * z=2  Notion callout tint — the document-native weather signal.
@@ -1063,6 +1076,7 @@ export function ParchmentWidget({
               paddingLeft: 8,
               paddingRight: 10,
               borderRadius: 6,
+              minWidth: pillMinWidth,
               background: N_FILL,
               border: `1px solid ${N_BORDER_MED}`,
               boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
@@ -1138,8 +1152,8 @@ export function ParchmentWidget({
             />
 
             {/* Temperature */}
-            {pillTempStr && (
-              <span
+            {showWeather && (
+              <motion.span
                 style={{
                   fontFamily: NOTION_FONT,
                   fontSize: 12,
@@ -1147,14 +1161,17 @@ export function ParchmentWidget({
                   color: N_TEXT,
                   letterSpacing: '-0.01em',
                   fontVariantNumeric: 'tabular-nums',
+                  minWidth: 28,
                 }}
+                animate={{ opacity: pillTempStr ? 1 : 0 }}
+                transition={CONTENT_FADE}
               >
-                {pillTempStr}
-              </span>
+                {pillTempStr || '\u00A0'}
+              </motion.span>
             )}
 
-            {pillTempStr && (
-              <span
+            {showWeather && (
+              <motion.span
                 style={{
                   width: 2,
                   height: 2,
@@ -1162,6 +1179,8 @@ export function ParchmentWidget({
                   background: N_TEXT_GHOST,
                   flexShrink: 0,
                 }}
+                animate={{ opacity: pillTempStr ? 1 : 0 }}
+                transition={CONTENT_FADE}
               />
             )}
 
@@ -1184,21 +1203,22 @@ export function ParchmentWidget({
              * keeping the left side clean for the icon+temp+label reading order.
              * Uses a subtle opacity transition to avoid a jarring pop-in.
              */}
-            {flagActive && (
+            {showFlag && (
               <motion.span
-                initial={{ opacity: 0, scale: 0.6 }}
-                animate={{ opacity: 0.85, scale: 1 }}
-                transition={{ duration: 0.38, ease: [0.34, 1.56, 0.64, 1] }}
-                style={{ display: 'flex', alignItems: 'center' }}
+                animate={{ opacity: flagActive ? 0.85 : 0 }}
+                transition={CONTENT_FADE}
+                style={{ display: 'flex', alignItems: 'center', width: 20, flexShrink: 0 }}
               >
-                <PillFlagBadge
-                  code={countryInfo?.code}
-                  skin="parchment"
-                  mode="light"
-                  accent={N_TEXT_GHOST}
-                  shadow={N_SURFACE}
-                  highlight={N_TEXT}
-                />
+                {flagActive && (
+                  <PillFlagBadge
+                    code={countryInfo?.code}
+                    skin="parchment"
+                    mode="light"
+                    accent={N_TEXT_GHOST}
+                    shadow={N_SURFACE}
+                    highlight={N_TEXT}
+                  />
+                )}
               </motion.span>
             )}
 

@@ -22,6 +22,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { type SolarPhase, useSolarPosition } from '../../hooks/useSolarPosition';
 import { lerpColor } from '../../lib/solar-lerp';
 import { useSolarTheme } from '../../provider/solar-theme-provider';
+import { CONTENT_FADE } from '../../shared/content-fade';
 import { PillFlagBadge } from '../../shared/flag-badge';
 import { PillWeatherGlyph } from '../../shared/pill-weather-glyphs';
 import { WeatherIcon, type WeatherIconKey } from '../../shared/solar-weather-icons';
@@ -945,6 +946,13 @@ export function MineralWidget({
   const pillShowWeather =
     showWeather && effectiveWeatherIcon !== null && effectiveWeatherIcon !== 'clear';
 
+  const pillMinWidth = useMemo(() => {
+    let w = 82; // base: icon(20) + gap(8) + dot(3) + gap(8) + label(~35) + arrow(10+2)
+    if (showWeather) w += 36; // temp text slot
+    if (showFlag) w += 28; // flag badge slot
+    return w;
+  }, [showWeather, showFlag]);
+
   function fmtMin(m: number) {
     const h = Math.floor(m / 60) % 24;
     const mm = Math.round(m % 60);
@@ -1051,12 +1059,20 @@ export function MineralWidget({
                   }}
                 />
 
-                {showWeather && effectiveWeatherCategory && (
-                  <WeatherBackdrop
-                    category={effectiveWeatherCategory}
-                    skin="mineral"
-                    phaseColors={phaseColors}
-                  />
+                {showWeather && (
+                  <motion.div
+                    animate={{ opacity: effectiveWeatherCategory ? 1 : 0 }}
+                    transition={{ duration: 0.5, ease: 'easeOut' }}
+                    style={{ position: 'absolute', inset: 0, zIndex: 4 }}
+                  >
+                    {effectiveWeatherCategory && (
+                      <WeatherBackdrop
+                        category={effectiveWeatherCategory}
+                        skin="mineral"
+                        phaseColors={phaseColors}
+                      />
+                    )}
+                  </motion.div>
                 )}
 
                 <svg
@@ -1122,13 +1138,21 @@ export function MineralWidget({
                   </g>
                 </svg>
 
-                {showWeather && effectiveWeatherCategory && (
-                  <WeatherLayer
-                    category={effectiveWeatherCategory}
-                    skin="mineral"
-                    opacity={effectiveIsDaytime ? 0.78 : 0.95}
-                    phaseColors={phaseColors}
-                  />
+                {showWeather && (
+                  <motion.div
+                    animate={{ opacity: effectiveWeatherCategory ? 1 : 0 }}
+                    transition={{ duration: 0.5, ease: 'easeOut' }}
+                    style={{ position: 'absolute', inset: 0, zIndex: 5 }}
+                  >
+                    {effectiveWeatherCategory && (
+                      <WeatherLayer
+                        category={effectiveWeatherCategory}
+                        skin="mineral"
+                        opacity={effectiveIsDaytime ? 0.78 : 0.95}
+                        phaseColors={phaseColors}
+                      />
+                    )}
+                  </motion.div>
                 )}
 
                 <div className="absolute top-0 left-0 right-0 px-5 pt-5" style={{ zIndex: 5 }}>
@@ -1342,6 +1366,7 @@ export function MineralWidget({
             className="flex items-center gap-2 cursor-pointer select-none"
             style={{
               height: 36,
+              minWidth: pillMinWidth,
               paddingLeft: 10,
               paddingRight: 14,
               borderRadius: 18,
@@ -1439,18 +1464,19 @@ export function MineralWidget({
               </AnimatePresence>
             </span>
 
-            {pillTempStr && (
+            {showWeather && (
               <motion.span
                 style={{
                   fontFamily: SANS,
                   fontSize: 13,
                   fontWeight: 500,
                   letterSpacing: '-0.01em',
+                  minWidth: 28,
                 }}
-                animate={{ color: palette.pillText }}
+                animate={{ color: palette.pillText, opacity: pillTempStr ? 1 : 0 }}
                 transition={{ duration: 1.2 }}
               >
-                {pillTempStr}
+                {pillTempStr || '\u00A0'}
               </motion.span>
             )}
 
@@ -1479,25 +1505,28 @@ export function MineralWidget({
             </motion.span>
 
             {/* FLAG — mineral skin: octagonal duotone gem treatment */}
-            {flagActive && (
+            {showFlag && (
               <motion.span
-                initial={{ opacity: 0, scale: 0.6 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.38 }}
+                animate={{ opacity: flagActive ? 1 : 0 }}
+                transition={CONTENT_FADE}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
+                  width: 20,
+                  flexShrink: 0,
                 }}
               >
-                <PillFlagBadge
-                  code={countryInfo?.code}
-                  skin="mineral"
-                  mode={palette.mode}
-                  accent={palette.accentColor}
-                  shadow={palette.bg[0]}
-                  highlight={palette.textPrimary}
-                  glow={palette.outerGlow}
-                />
+                {flagActive && (
+                  <PillFlagBadge
+                    code={countryInfo?.code}
+                    skin="mineral"
+                    mode={palette.mode}
+                    accent={palette.accentColor}
+                    shadow={palette.bg[0]}
+                    highlight={palette.textPrimary}
+                    glow={palette.outerGlow}
+                  />
+                )}
               </motion.span>
             )}
 

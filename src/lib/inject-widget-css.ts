@@ -3,7 +3,7 @@
  *
  * Host apps that already include Tailwind will have these classes, but when
  * the host framework (e.g. Blade) processes CSS differently or the consumer
- * forgets to import `@qodin-co/sol/styles.css`, the widgets would break.
+ * forgets to import `@circadian/sol/styles.css`, the widgets would break.
  *
  * This module injects a tiny self-contained stylesheet at runtime so the
  * widgets always render correctly regardless of the host's CSS setup.

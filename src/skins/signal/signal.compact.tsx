@@ -26,6 +26,7 @@ import * as ct from 'countries-and-timezones';
 import { motion } from 'motion/react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSolarPosition } from '../../hooks/useSolarPosition';
+import { CONTENT_FADE } from '../../shared/content-fade';
 import {
   WEATHER_ORB_DIM,
   WeatherBackdrop,
@@ -404,25 +405,35 @@ export function SignalCompact({
     >
       {/* z=3  Weather backdrop */}
       {showWeather && effectiveWeatherCategory && (
-        <div style={{ position: 'absolute', inset: 0, zIndex: 3 }}>
+        <motion.div
+          style={{ position: 'absolute', inset: 0, zIndex: 3 }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={CONTENT_FADE}
+        >
           <WeatherBackdrop
             category={effectiveWeatherCategory}
             skin="signal"
             phaseColors={phaseColors}
           />
-        </div>
+        </motion.div>
       )}
 
       {/* z=4  Weather layer */}
       {showWeather && effectiveWeatherCategory && effectiveWeatherCategory !== 'clear' && (
-        <div style={{ position: 'absolute', inset: 0, zIndex: 4 }}>
+        <motion.div
+          style={{ position: 'absolute', inset: 0, zIndex: 4 }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={CONTENT_FADE}
+        >
           <WeatherLayer
             category={effectiveWeatherCategory}
             skin="signal"
             opacity={effectiveWeatherCategory === 'thunder' ? 0.45 : 0.35}
             phaseColors={phaseColors}
           />
-        </div>
+        </motion.div>
       )}
 
       {/* z=1  Scanlines */}
@@ -492,7 +503,7 @@ export function SignalCompact({
              * Rendered at the same size and style as the phase code, slightly muted.
              * Signal: codes only — WX:, SR:, SS:, LOC: — consistent data-readout pattern.
              */}
-            {flagActive && (
+            {showFlag && (
               <motion.span
                 style={{
                   fontFamily: MONO,
@@ -502,10 +513,10 @@ export function SignalCompact({
                   lineHeight: 1,
                   fontWeight: 400,
                 }}
-                animate={{ color: pal.textMuted }}
-                transition={{ duration: 0.6 }}
+                animate={{ color: pal.textMuted, opacity: flagActive ? 1 : 0 }}
+                transition={CONTENT_FADE}
               >
-                LOC:{countryCode}
+                LOC:{countryCode || '\u00A0\u00A0'}
               </motion.span>
             )}
           </div>
@@ -528,7 +539,7 @@ export function SignalCompact({
                 <span style={{ opacity: blink ? 1 : 0 }}>_</span>
               </motion.span>
             )}
-            {showTemperature && tempStr && (
+            {showTemperature && (
               <motion.span
                 style={{
                   fontFamily: MONO,
@@ -536,11 +547,12 @@ export function SignalCompact({
                   letterSpacing: '0.04em',
                   fontWeight: 700,
                   lineHeight: 1,
+                  minWidth: 24,
                 }}
-                animate={{ color: pal.accent }}
-                transition={{ duration: 0.6 }}
+                animate={{ color: pal.accent, opacity: tempStr ? 1 : 0 }}
+                transition={CONTENT_FADE}
               >
-                {tempStr.toUpperCase()}
+                {tempStr ? tempStr.toUpperCase() : '\u00A0'}
               </motion.span>
             )}
             {showWeather && effectiveWeatherCategory && effectiveWeatherCategory !== 'clear' && (

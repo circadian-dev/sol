@@ -41,6 +41,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { type SolarPhase, useSolarPosition } from '../../hooks/useSolarPosition';
 import { lerpColor } from '../../lib/solar-lerp';
 import { useSolarTheme } from '../../provider/solar-theme-provider';
+import { CONTENT_FADE } from '../../shared/content-fade';
 import { PillFlagBadge } from '../../shared/flag-badge';
 import { PillWeatherGlyph } from '../../shared/pill-weather-glyphs';
 import {
@@ -751,6 +752,12 @@ export function SundialWidget({
   const showGnomon = !effectiveCat || effectiveCat === 'clear' || effectiveCat === 'partly-cloudy';
   const orbDimOpacity = effectiveCat ? WEATHER_ORB_DIM[effectiveCat] : 1;
   const pillShowWeather = showWeather && effectiveCat !== null && effectiveCat !== 'clear';
+  const pillMinWidth = useMemo(() => {
+    let w = 82;
+    if (showWeather) w += 36;
+    if (showFlag) w += 28;
+    return w;
+  }, [showWeather, showFlag]);
   const pillPhaseIcon: 'sun' | 'moon' | 'dawn' | 'dusk' =
     phase === 'midnight' || phase === 'night'
       ? 'moon'
@@ -926,13 +933,19 @@ export function SundialWidget({
                 )}
 
                 {/* z=3 Weather backdrop */}
-                {showWeather && effectiveCat && (
-                  <WeatherBackdrop
-                    category={effectiveCat}
-                    skin="sundial"
-                    phaseColors={phaseColors}
-                  />
-                )}
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: showWeather && effectiveCat ? 1 : 0 }}
+                  transition={CONTENT_FADE}
+                >
+                  {showWeather && effectiveCat && (
+                    <WeatherBackdrop
+                      category={effectiveCat}
+                      skin="sundial"
+                      phaseColors={phaseColors}
+                    />
+                  )}
+                </motion.div>
 
                 {/* z=4 Arc SVG */}
                 <svg
@@ -1053,14 +1066,20 @@ export function SundialWidget({
                 </svg>
 
                 {/* z=5 Weather layer */}
-                {showWeather && effectiveCat && (
-                  <WeatherLayer
-                    category={effectiveCat}
-                    skin="sundial"
-                    opacity={isDaytime ? 0.72 : 0.88}
-                    phaseColors={phaseColors}
-                  />
-                )}
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: showWeather && effectiveCat ? 1 : 0 }}
+                  transition={CONTENT_FADE}
+                >
+                  {showWeather && effectiveCat && (
+                    <WeatherLayer
+                      category={effectiveCat}
+                      skin="sundial"
+                      opacity={isDaytime ? 0.72 : 0.88}
+                      phaseColors={phaseColors}
+                    />
+                  )}
+                </motion.div>
 
                 {/* z=6 Header */}
                 <div className="absolute top-0 left-0 right-0 px-5 pt-5" style={{ zIndex: 6 }}>
@@ -1263,6 +1282,7 @@ export function SundialWidget({
               paddingLeft: 10,
               paddingRight: 14,
               borderRadius: 12,
+              minWidth: pillMinWidth,
               background: effectivePillBg,
               border: `1px solid ${effectivePillBorder}`,
               boxShadow: `0 4px 16px rgba(0,0,0,0.22), 0 0 22px 4px ${palette.outerGlow}`,
@@ -1360,28 +1380,23 @@ export function SundialWidget({
              * slate wash (night), 2px carved-recess rect shape. No glow halo
              * (intentionally omitted — sundial has no soft light emission).
              */}
-            {flagActive && (
+            {showFlag && (
               <motion.span
-                initial={{ opacity: 0, scale: 0.55 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{
-                  duration: 0.4,
-                  ease: [0.34, 1.56, 0.64, 1],
-                }}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                }}
+                animate={{ opacity: flagActive ? 1 : 0 }}
+                transition={CONTENT_FADE}
+                style={{ display: 'flex', alignItems: 'center', width: 20, flexShrink: 0 }}
               >
-                <PillFlagBadge
-                  code={countryInfo?.code}
-                  skin="sundial"
-                  mode={palette.mode}
-                  accent={palette.orbFill}
-                  shadow={palette.bg[0]}
-                  highlight={palette.textPrimary}
-                  glow={palette.outerGlow}
-                />
+                {flagActive && (
+                  <PillFlagBadge
+                    code={countryInfo?.code}
+                    skin="sundial"
+                    mode={palette.mode}
+                    accent={palette.orbFill}
+                    shadow={palette.bg[0]}
+                    highlight={palette.textPrimary}
+                    glow={palette.outerGlow}
+                  />
+                )}
               </motion.span>
             )}
 
@@ -1393,11 +1408,12 @@ export function SundialWidget({
                 fontSize: 13,
                 fontWeight: 400,
                 letterSpacing: '-0.01em',
+                minWidth: 28,
               }}
-              animate={{ color: palette.pillText }}
+              animate={{ color: palette.pillText, opacity: hasTempData ? 1 : 0 }}
               transition={{ duration: 2 }}
             >
-              {hasTempData ? (temperatureUnit === 'F' ? `${toF(tempC)}°` : `${tempC}°`) : ''}
+              {hasTempData ? (temperatureUnit === 'F' ? `${toF(tempC)}°` : `${tempC}°`) : '\u00A0'}
             </motion.span>
 
             <span

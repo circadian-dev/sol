@@ -17,6 +17,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { type SolarPhase, useSolarPosition } from '../../hooks/useSolarPosition';
 import { lerpColor } from '../../lib/solar-lerp';
 import { useSolarTheme } from '../../provider/solar-theme-provider';
+import { CONTENT_FADE } from '../../shared/content-fade';
 import { PillWeatherGlyph } from '../../shared/pill-weather-glyphs';
 import {
   WEATHER_ORB_DIM,
@@ -580,6 +581,11 @@ export function VoidWidget({
   const isThunder = effectiveCat === 'thunder';
   const orbDimOpacity = effectiveCat && !isThunder ? WEATHER_ORB_DIM[effectiveCat] : 1;
   const pillShowWeather = showWeather && effectiveCat !== null && effectiveCat !== 'clear';
+  const pillMinWidth = useMemo(() => {
+    let w = 82;
+    if (showWeather) w += 36;
+    return w;
+  }, [showWeather]);
   const pillPhaseIcon: 'sun' | 'moon' | 'dawn' | 'dusk' =
     phase === 'midnight' || phase === 'night'
       ? 'moon'
@@ -709,9 +715,19 @@ export function VoidWidget({
                 />
 
                 {/* z=1 Weather backdrop */}
-                {showWeather && effectiveCat && (
-                  <WeatherBackdrop category={effectiveCat} skin="void" phaseColors={phaseColors} />
-                )}
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: showWeather && effectiveCat ? 1 : 0 }}
+                  transition={CONTENT_FADE}
+                >
+                  {showWeather && effectiveCat && (
+                    <WeatherBackdrop
+                      category={effectiveCat}
+                      skin="void"
+                      phaseColors={phaseColors}
+                    />
+                  )}
+                </motion.div>
 
                 {/* z=2 Arc hairline */}
                 <svg
@@ -792,14 +808,20 @@ export function VoidWidget({
                 </svg>
 
                 {/* z=4 Weather layer */}
-                {showWeather && effectiveCat && (
-                  <WeatherLayer
-                    category={effectiveCat}
-                    skin="void"
-                    opacity={isThunder ? 0.92 : 0.12}
-                    phaseColors={phaseColors}
-                  />
-                )}
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: showWeather && effectiveCat ? 1 : 0 }}
+                  transition={CONTENT_FADE}
+                >
+                  {showWeather && effectiveCat && (
+                    <WeatherLayer
+                      category={effectiveCat}
+                      skin="void"
+                      opacity={isThunder ? 0.92 : 0.12}
+                      phaseColors={phaseColors}
+                    />
+                  )}
+                </motion.div>
 
                 {/* z=5 Header */}
                 <div className="absolute top-0 left-0 right-0 px-5 pt-5" style={{ zIndex: 5 }}>
@@ -975,6 +997,7 @@ export function VoidWidget({
             className="flex items-center gap-2 cursor-pointer select-none group"
             style={{
               height: 36,
+              minWidth: pillMinWidth,
               paddingLeft: 12,
               paddingRight: 14,
               borderRadius: 18,
@@ -1095,11 +1118,13 @@ export function VoidWidget({
                 fontWeight: 200,
                 letterSpacing: '-0.01em',
                 color: palette.textPrimary,
-                opacity: 0.4,
+                minWidth: 28,
               }}
+              animate={{ opacity: hasTempData ? 0.4 : 0 }}
+              transition={CONTENT_FADE}
               className="group-hover:opacity-68 transition-opacity duration-300"
             >
-              {hasTempData ? (temperatureUnit === 'F' ? `${toF(tempC)}°` : `${tempC}°`) : ''}
+              {hasTempData ? (temperatureUnit === 'F' ? `${toF(tempC)}°` : `${tempC}°`) : '\u00A0'}
             </motion.span>
 
             <span

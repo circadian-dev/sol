@@ -23,6 +23,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { type SolarPhase, useSolarPosition } from '../../hooks/useSolarPosition';
 import { lerpColor } from '../../lib/solar-lerp';
 import { useSolarTheme } from '../../provider/solar-theme-provider';
+import { CONTENT_FADE } from '../../shared/content-fade';
 import { PillFlagBadge } from '../../shared/flag-badge';
 import { PillWeatherGlyph } from '../../shared/pill-weather-glyphs';
 import { WeatherIcon, type WeatherIconKey } from '../../shared/solar-weather-icons';
@@ -933,6 +934,13 @@ export function AuroraWidget({
   const pillShowWeather =
     showWeather && effectiveWeatherCategory !== null && effectiveWeatherCategory !== 'clear';
 
+  const pillMinWidth = useMemo(() => {
+    let w = 82;
+    if (showWeather) w += 36;
+    if (showFlag) w += 28;
+    return w;
+  }, [showWeather, showFlag]);
+
   function fmtMin(m: number) {
     const h = Math.floor(m / 60) % 24;
     const mm = Math.round(m % 60);
@@ -1049,12 +1057,20 @@ export function AuroraWidget({
                   opacity={palette.auroraOpacity}
                 />
 
-                {showWeather && effectiveWeatherCategory && (
-                  <WeatherBackdrop
-                    category={effectiveWeatherCategory}
-                    skin="aurora"
-                    phaseColors={phaseColors}
-                  />
+                {showWeather && (
+                  <motion.div
+                    animate={{ opacity: effectiveWeatherCategory ? 1 : 0 }}
+                    transition={{ duration: 0.5, ease: 'easeOut' }}
+                    style={{ position: 'absolute', inset: 0, zIndex: 2 }}
+                  >
+                    {effectiveWeatherCategory && (
+                      <WeatherBackdrop
+                        category={effectiveWeatherCategory}
+                        skin="aurora"
+                        phaseColors={phaseColors}
+                      />
+                    )}
+                  </motion.div>
                 )}
 
                 {/* z=3 Arc + corona orb */}
@@ -1217,16 +1233,13 @@ export function AuroraWidget({
                     ↑ {sunriseFmt}
                   </span>
 
-                  {flagActive && (
+                  {showFlag && (
                     <motion.span
                       key={countryInfo?.name}
-                      initial={{ opacity: 0, y: 3 }}
                       animate={{
-                        opacity: 0.75,
-                        y: 0,
+                        opacity: flagActive ? 0.75 : 0,
                       }}
-                      exit={{ opacity: 0 }}
-                      transition={{ duration: 0.5 }}
+                      transition={CONTENT_FADE}
                       style={{
                         display: 'flex',
                         alignItems: 'center',
@@ -1247,7 +1260,7 @@ export function AuroraWidget({
                           opacity: 0.4,
                         }}
                       />
-                      {countryInfo?.name}
+                      {countryInfo?.name ?? '\u00A0'}
                       <span
                         style={{
                           display: 'block',
@@ -1355,6 +1368,7 @@ export function AuroraWidget({
             className="flex items-center gap-2 cursor-pointer select-none"
             style={{
               height: 36,
+              minWidth: pillMinWidth,
               paddingLeft: 10,
               paddingRight: 14,
               borderRadius: 18,
@@ -1448,18 +1462,19 @@ export function AuroraWidget({
               </AnimatePresence>
             </span>
 
-            {pillTempStr && (
+            {showWeather && (
               <motion.span
                 style={{
                   fontFamily: SANS,
                   fontSize: 13,
                   fontWeight: 400,
                   letterSpacing: '-0.01em',
+                  minWidth: 28,
                 }}
-                animate={{ color: palette.pillText }}
+                animate={{ color: palette.pillText, opacity: pillTempStr ? 1 : 0 }}
                 transition={{ duration: 1.4 }}
               >
-                {pillTempStr}
+                {pillTempStr || '\u00A0'}
               </motion.span>
             )}
 
@@ -1486,25 +1501,28 @@ export function AuroraWidget({
               {palette.label}
             </motion.span>
 
-            {flagActive && (
+            {showFlag && (
               <motion.span
-                initial={{ opacity: 0, scale: 0.6 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.38 }}
+                animate={{ opacity: flagActive ? 1 : 0 }}
+                transition={CONTENT_FADE}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
+                  width: 20,
+                  flexShrink: 0,
                 }}
               >
-                <PillFlagBadge
-                  code={countryInfo.code}
-                  skin="aurora"
-                  mode={palette.mode}
-                  accent={palette.accentColor}
-                  shadow={palette.bg[0]}
-                  highlight={palette.textPrimary}
-                  glow={palette.outerGlow}
-                />
+                {flagActive && (
+                  <PillFlagBadge
+                    code={countryInfo.code}
+                    skin="aurora"
+                    mode={palette.mode}
+                    accent={palette.accentColor}
+                    shadow={palette.bg[0]}
+                    highlight={palette.textPrimary}
+                    glow={palette.outerGlow}
+                  />
+                )}
               </motion.span>
             )}
 

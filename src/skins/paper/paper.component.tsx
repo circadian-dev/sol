@@ -35,6 +35,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { type SolarPhase, useSolarPosition } from '../../hooks/useSolarPosition';
 import { lerpColor } from '../../lib/solar-lerp';
 import { useSolarTheme } from '../../provider/solar-theme-provider';
+import { CONTENT_FADE } from '../../shared/content-fade';
 import { PillFlagBadge } from '../../shared/flag-badge';
 import { PillWeatherGlyph } from '../../shared/pill-weather-glyphs';
 import { WeatherIcon, type WeatherIconKey } from '../../shared/solar-weather-icons';
@@ -799,6 +800,13 @@ export function PaperWidget({
 
   const pillShowWeather = showWeather && effectiveWeatherIcon !== null;
 
+  const pillMinWidth = useMemo(() => {
+    let w = 82;
+    if (showWeather) w += 36;
+    if (showFlag) w += 28;
+    return w;
+  }, [showWeather, showFlag]);
+
   function fmtMin(m: number) {
     const h = Math.floor(m / 60) % 24;
     const mm = Math.round(m % 60);
@@ -919,13 +927,19 @@ export function PaperWidget({
                   ))}
                 </motion.div>
 
-                {showWeather && effectiveWeatherCategory && (
-                  <WeatherBackdrop
-                    category={effectiveWeatherCategory}
-                    skin="paper"
-                    phaseColors={phaseColors}
-                  />
-                )}
+                <motion.div
+                  animate={{ opacity: showWeather && effectiveWeatherCategory ? 1 : 0 }}
+                  transition={CONTENT_FADE}
+                  style={{ position: 'absolute', inset: 0 }}
+                >
+                  {showWeather && effectiveWeatherCategory && (
+                    <WeatherBackdrop
+                      category={effectiveWeatherCategory}
+                      skin="paper"
+                      phaseColors={phaseColors}
+                    />
+                  )}
+                </motion.div>
 
                 <svg
                   aria-hidden="true"
@@ -1086,16 +1100,10 @@ export function PaperWidget({
                    * flag is gently desaturated to match the ink-on-stock world.
                    * No glow — paper doesn't emit light.
                    */}
-                  {flagActive && (
+                  {showFlag && (
                     <motion.span
-                      key={countryInfo?.name}
-                      initial={{ opacity: 0, y: 3 }}
-                      animate={{
-                        opacity: 0.82,
-                        y: 0,
-                      }}
-                      exit={{ opacity: 0, y: 3 }}
-                      transition={{ duration: 0.55 }}
+                      animate={{ opacity: flagActive ? 0.82 : 0 }}
+                      transition={CONTENT_FADE}
                       style={{
                         display: 'flex',
                         alignItems: 'center',
@@ -1223,6 +1231,7 @@ export function PaperWidget({
             className="flex items-center gap-2 cursor-pointer select-none"
             style={{
               height: 36,
+              minWidth: pillMinWidth,
               paddingLeft: 10,
               paddingRight: 14,
               borderRadius: 24,
@@ -1327,42 +1336,45 @@ export function PaperWidget({
              * falls through to default 3px borderRadius) which suits paper's
              * non-circular, non-sharp aesthetic. No glow — ink world is matte.
              */}
-            {flagActive && (
+            {showFlag && (
               <motion.span
-                initial={{ opacity: 0, scale: 0.55 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{
-                  duration: 0.4,
-                  ease: [0.34, 1.56, 0.64, 1],
-                }}
+                animate={{ opacity: flagActive ? 1 : 0 }}
+                transition={CONTENT_FADE}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
+                  width: 20,
+                  flexShrink: 0,
                 }}
               >
-                <PillFlagBadge
-                  code={countryInfo?.code}
-                  skin="paper"
-                  mode={palette.mode}
-                  accent={palette.accentColor}
-                  shadow={palette.bg[0]}
-                  highlight={palette.textPrimary}
-                />
+                {flagActive && (
+                  <PillFlagBadge
+                    code={countryInfo?.code}
+                    skin="paper"
+                    mode={palette.mode}
+                    accent={palette.accentColor}
+                    shadow={palette.bg[0]}
+                    highlight={palette.textPrimary}
+                  />
+                )}
               </motion.span>
             )}
 
-            <motion.span
-              style={{
-                fontFamily: SERIF,
-                fontSize: 13,
-                fontWeight: 400,
-                letterSpacing: '-0.01em',
-              }}
-              animate={{ color: palette.pillText }}
-              transition={{ duration: 2 }}
-            >
-              {pillTempStr}
-            </motion.span>
+            {showWeather && (
+              <motion.span
+                style={{
+                  fontFamily: SERIF,
+                  fontSize: 13,
+                  fontWeight: 400,
+                  letterSpacing: '-0.01em',
+                  minWidth: 28,
+                }}
+                animate={{ color: palette.pillText, opacity: pillTempStr ? 1 : 0 }}
+                transition={{ duration: 2 }}
+              >
+                {pillTempStr || '\u00A0'}
+              </motion.span>
+            )}
 
             <span
               style={{

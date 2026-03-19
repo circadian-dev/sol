@@ -49,6 +49,7 @@ import * as ct from 'countries-and-timezones';
 import { AnimatePresence, motion } from 'motion/react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { type SolarPhase, useSolarPosition } from '../../hooks/useSolarPosition';
+import { CONTENT_FADE } from '../../shared/content-fade';
 import { CompactFlagBadge } from '../../shared/flag-badge';
 import { PillWeatherGlyph } from '../../shared/pill-weather-glyphs';
 import { WEATHER_ORB_DIM } from '../../shared/weather-layer';
@@ -647,21 +648,22 @@ export function ParchmentCompact({
              * opacity:0.85 — matches the subdued treatment used throughout
              * parchment for secondary UI elements.
              */}
-            {showFlag && countryCode && (
+            {showFlag && (
               <motion.span
-                initial={{ opacity: 0, scale: 0.6 }}
-                animate={{ opacity: 0.85, scale: 1 }}
-                transition={{ duration: 0.38, ease: [0.34, 1.56, 0.64, 1] }}
-                style={{ display: 'flex', alignItems: 'center' }}
+                animate={{ opacity: countryCode ? 0.85 : 0 }}
+                transition={CONTENT_FADE}
+                style={{ display: 'inline-flex', alignItems: 'center', width: 18, flexShrink: 0 }}
               >
-                <CompactFlagBadge
-                  code={countryCode}
-                  skin="parchment"
-                  mode="light"
-                  accent={N_TEXT_GHOST}
-                  shadow={N_SURFACE}
-                  highlight={N_TEXT}
-                />
+                {countryCode && (
+                  <CompactFlagBadge
+                    code={countryCode}
+                    skin="parchment"
+                    mode="light"
+                    accent={N_TEXT_GHOST}
+                    shadow={N_SURFACE}
+                    highlight={N_TEXT}
+                  />
+                )}
               </motion.span>
             )}
           </div>
@@ -682,8 +684,8 @@ export function ParchmentCompact({
                 {time}
               </span>
             )}
-            {showTemperature && tempStr && (
-              <span
+            {showTemperature && (
+              <motion.span
                 style={{
                   fontFamily: NOTION_FONT,
                   fontSize: size.labelSize,
@@ -692,10 +694,13 @@ export function ParchmentCompact({
                   letterSpacing: '-0.01em',
                   fontVariantNumeric: 'tabular-nums',
                   lineHeight: 1,
+                  minWidth: 24,
                 }}
+                animate={{ opacity: tempStr ? 1 : 0 }}
+                transition={CONTENT_FADE}
               >
-                {tempStr}
-              </span>
+                {tempStr || '\u00A0'}
+              </motion.span>
             )}
           </div>
         </div>

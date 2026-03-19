@@ -26,6 +26,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { type SolarPhase, useSolarPosition } from '../../hooks/useSolarPosition';
 import { lerpColor } from '../../lib/solar-lerp';
 import { useSolarTheme } from '../../provider/solar-theme-provider';
+import { CONTENT_FADE } from '../../shared/content-fade';
 import { PillWeatherGlyph } from '../../shared/pill-weather-glyphs';
 import { WeatherIcon, type WeatherIconKey } from '../../shared/solar-weather-icons';
 import {
@@ -680,6 +681,13 @@ export function SignalWidget({
   const pillShowWeather =
     showWeather && effectiveWeatherIcon !== null && effectiveWeatherIcon !== 'clear';
 
+  const pillMinWidth = useMemo(() => {
+    let w = 82;
+    if (showWeather) w += 36;
+    if (showFlag) w += 44;
+    return w;
+  }, [showWeather, showFlag]);
+
   function fmtMin(m: number) {
     const h = Math.floor(m / 60) % 24;
     const mm = Math.round(m % 60);
@@ -749,11 +757,17 @@ export function SignalWidget({
                 />
 
                 {showWeather && effectiveWeatherCategory && (
-                  <WeatherBackdrop
-                    category={effectiveWeatherCategory}
-                    skin="signal"
-                    phaseColors={phaseColors}
-                  />
+                  <motion.div
+                    animate={{ opacity: 1 }}
+                    initial={{ opacity: 0 }}
+                    transition={CONTENT_FADE}
+                  >
+                    <WeatherBackdrop
+                      category={effectiveWeatherCategory}
+                      skin="signal"
+                      phaseColors={phaseColors}
+                    />
+                  </motion.div>
                 )}
 
                 {/* Arc + reticle */}
@@ -790,12 +804,18 @@ export function SignalWidget({
                 </svg>
 
                 {showWeather && effectiveWeatherCategory && (
-                  <WeatherLayer
-                    category={effectiveWeatherCategory}
-                    skin="signal"
-                    opacity={0.9}
-                    phaseColors={phaseColors}
-                  />
+                  <motion.div
+                    animate={{ opacity: 1 }}
+                    initial={{ opacity: 0 }}
+                    transition={CONTENT_FADE}
+                  >
+                    <WeatherLayer
+                      category={effectiveWeatherCategory}
+                      skin="signal"
+                      opacity={0.9}
+                      phaseColors={phaseColors}
+                    />
+                  </motion.div>
                 )}
 
                 {/* Header */}
@@ -849,7 +869,7 @@ export function SignalWidget({
                        * LOC: XX — two-letter country code as a terminal data field.
                        * Consistent with WX:, SR:, SS: — Signal speaks in codes not icons.
                        */}
-                      {flagActive && (
+                      {showFlag && (
                         <motion.p
                           style={{
                             fontFamily: MONO,
@@ -860,12 +880,13 @@ export function SignalWidget({
                           }}
                           animate={{
                             color: palette.textMuted,
+                            opacity: flagActive ? 1 : 0,
                           }}
                           transition={{
                             duration: 0.6,
                           }}
                         >
-                          LOC: {countryCode}
+                          LOC: {countryCode || '\u00A0\u00A0'}
                         </motion.p>
                       )}
                     </div>
@@ -999,6 +1020,7 @@ export function SignalWidget({
             className="flex items-center gap-2 cursor-pointer select-none"
             style={{
               height: 34,
+              minWidth: pillMinWidth,
               paddingLeft: 10,
               paddingRight: 14,
               borderRadius: 6,
@@ -1100,18 +1122,21 @@ export function SignalWidget({
             </span>
 
             {/* Temperature */}
-            {pillTempStr && (
-              <span
+            {showWeather && (
+              <motion.span
                 style={{
                   fontFamily: MONO,
                   fontSize: 12,
                   fontWeight: 700,
                   letterSpacing: '0.04em',
                   color: palette.accent,
+                  minWidth: 28,
                 }}
+                animate={{ opacity: pillTempStr ? 1 : 0 }}
+                transition={CONTENT_FADE}
               >
-                {pillTempStr}
-              </span>
+                {pillTempStr || '\u00A0'}
+              </motion.span>
             )}
 
             {/* Separator */}
@@ -1146,8 +1171,12 @@ export function SignalWidget({
              * Country code — appended as "// XX" matching the pill's data-stream
              * pattern. Result: "MIDNIGHT // GB" — pure terminal, no flag image.
              */}
-            {flagActive && (
-              <>
+            {showFlag && (
+              <motion.span
+                animate={{ opacity: flagActive ? 1 : 0 }}
+                transition={CONTENT_FADE}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flexShrink: 0 }}
+              >
                 <span
                   style={{
                     fontFamily: MONO,
@@ -1170,9 +1199,9 @@ export function SignalWidget({
                     color: palette.textMuted,
                   }}
                 >
-                  {countryCode}
+                  {countryCode || '\u00A0\u00A0'}
                 </span>
-              </>
+              </motion.span>
             )}
 
             {/* Expand indicator */}

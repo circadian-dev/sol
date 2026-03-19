@@ -18,6 +18,7 @@ import * as ct from 'countries-and-timezones';
 import { motion } from 'motion/react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { type SolarPhase, useSolarPosition } from '../../hooks/useSolarPosition';
+import { CONTENT_FADE } from '../../shared/content-fade';
 import { CompactFlagBadge } from '../../shared/flag-badge';
 import {
   WEATHER_ORB_DIM,
@@ -433,25 +434,39 @@ export function MineralCompact({
         }}
       />
 
-      {showWeather && effectiveWeatherCategory && (
-        <div style={{ position: 'absolute', inset: 0, zIndex: 4 }}>
-          <WeatherBackdrop
-            category={effectiveWeatherCategory}
-            skin="mineral"
-            phaseColors={phaseColors}
-          />
-        </div>
+      {showWeather && (
+        <motion.div
+          animate={{ opacity: effectiveWeatherCategory ? 1 : 0 }}
+          transition={{ duration: 0.5, ease: 'easeOut' }}
+          style={{ position: 'absolute', inset: 0, zIndex: 4 }}
+        >
+          {effectiveWeatherCategory && (
+            <WeatherBackdrop
+              category={effectiveWeatherCategory}
+              skin="mineral"
+              phaseColors={phaseColors}
+            />
+          )}
+        </motion.div>
       )}
 
-      {showWeather && effectiveWeatherCategory && effectiveWeatherCategory !== 'clear' && (
-        <div style={{ position: 'absolute', inset: 0, zIndex: 5 }}>
-          <WeatherLayer
-            category={effectiveWeatherCategory}
-            skin="mineral"
-            opacity={effectiveWeatherCategory === 'thunder' ? 0.6 : 0.5}
-            phaseColors={phaseColors}
-          />
-        </div>
+      {showWeather && (
+        <motion.div
+          animate={{
+            opacity: effectiveWeatherCategory && effectiveWeatherCategory !== 'clear' ? 1 : 0,
+          }}
+          transition={{ duration: 0.5, ease: 'easeOut' }}
+          style={{ position: 'absolute', inset: 0, zIndex: 5 }}
+        >
+          {effectiveWeatherCategory && effectiveWeatherCategory !== 'clear' && (
+            <WeatherLayer
+              category={effectiveWeatherCategory}
+              skin="mineral"
+              opacity={effectiveWeatherCategory === 'thunder' ? 0.6 : 0.5}
+              phaseColors={phaseColors}
+            />
+          )}
+        </motion.div>
       )}
 
       <div
@@ -525,7 +540,7 @@ export function MineralCompact({
                 {time}
               </motion.span>
             )}
-            {showTemperature && tempStr && (
+            {showTemperature && (
               <motion.span
                 style={{
                   fontFamily: SANS,
@@ -533,25 +548,34 @@ export function MineralCompact({
                   letterSpacing: '0.04em',
                   fontWeight: 600,
                   lineHeight: 1,
+                  minWidth: 24,
                 }}
-                animate={{ color: pal.accentColor }}
+                animate={{ color: pal.accentColor, opacity: tempStr ? 1 : 0 }}
                 transition={{ duration: 1.2 }}
               >
-                {tempStr}
+                {tempStr || '\u00A0'}
               </motion.span>
             )}
 
             {/* FLAG — mineral duotone: darks→bg[0], lights→textPrimary */}
-            {showFlag && countryInfo && (
-              <CompactFlagBadge
-                code={countryInfo.code}
-                skin="mineral"
-                mode={pal.mode}
-                accent={pal.accentColor}
-                shadow={pal.bg[0]}
-                highlight={pal.textPrimary}
-                glow={pal.outerGlow}
-              />
+            {showFlag && (
+              <motion.span
+                animate={{ opacity: countryInfo ? 1 : 0 }}
+                transition={CONTENT_FADE}
+                style={{ display: 'inline-flex', alignItems: 'center', width: 18, flexShrink: 0 }}
+              >
+                {countryInfo && (
+                  <CompactFlagBadge
+                    code={countryInfo.code}
+                    skin="mineral"
+                    mode={pal.mode}
+                    accent={pal.accentColor}
+                    shadow={pal.bg[0]}
+                    highlight={pal.textPrimary}
+                    glow={pal.outerGlow}
+                  />
+                )}
+              </motion.span>
             )}
           </div>
         </div>

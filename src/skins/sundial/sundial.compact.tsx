@@ -29,6 +29,7 @@ import { motion } from 'motion/react';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { type SolarPhase, useSolarPosition } from '../../hooks/useSolarPosition';
 import { lerpColor } from '../../lib/solar-lerp';
+import { CONTENT_FADE } from '../../shared/content-fade';
 import { CompactFlagBadge } from '../../shared/flag-badge';
 import {
   WEATHER_ORB_DIM,
@@ -653,27 +654,40 @@ export function SundialCompact({
       />
 
       {/* z=3 Weather backdrop */}
-      {showWeather && effectiveWeatherCategory && (
-        <div style={{ position: 'absolute', inset: 0, zIndex: 3 }}>
+      <motion.div
+        style={{ position: 'absolute', inset: 0, zIndex: 3 }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: showWeather && effectiveWeatherCategory ? 1 : 0 }}
+        transition={CONTENT_FADE}
+      >
+        {showWeather && effectiveWeatherCategory && (
           <WeatherBackdrop
             category={effectiveWeatherCategory}
             skin="sundial"
             phaseColors={phaseColors}
           />
-        </div>
-      )}
+        )}
+      </motion.div>
 
       {/* z=4 Weather layer */}
-      {showWeather && effectiveWeatherCategory && effectiveWeatherCategory !== 'clear' && (
-        <div style={{ position: 'absolute', inset: 0, zIndex: 4 }}>
+      <motion.div
+        style={{ position: 'absolute', inset: 0, zIndex: 4 }}
+        initial={{ opacity: 0 }}
+        animate={{
+          opacity:
+            showWeather && effectiveWeatherCategory && effectiveWeatherCategory !== 'clear' ? 1 : 0,
+        }}
+        transition={CONTENT_FADE}
+      >
+        {showWeather && effectiveWeatherCategory && effectiveWeatherCategory !== 'clear' && (
           <WeatherLayer
             category={effectiveWeatherCategory}
             skin="sundial"
             opacity={effectiveWeatherCategory === 'thunder' ? 0.55 : 0.45}
             phaseColors={phaseColors}
           />
-        </div>
-      )}
+        )}
+      </motion.div>
 
       {/* z=5 3-row content */}
       <div
@@ -722,16 +736,24 @@ export function SundialCompact({
              * Props: accent=orbFill (phase's warm/cool stone tone), shadow=bg[0],
              * highlight=textPrimary, glow=orbGlow (passed through, shape ignores it).
              */}
-            {showFlag && countryInfo && (
-              <CompactFlagBadge
-                code={countryInfo.code}
-                skin="sundial"
-                mode={pal.mode}
-                accent={pal.orbFill}
-                shadow={pal.shadow}
-                highlight={pal.textPrimary}
-                glow={pal.orbGlow}
-              />
+            {showFlag && (
+              <motion.span
+                animate={{ opacity: countryInfo ? 1 : 0 }}
+                transition={CONTENT_FADE}
+                style={{ display: 'inline-flex', alignItems: 'center', width: 18, flexShrink: 0 }}
+              >
+                {countryInfo && (
+                  <CompactFlagBadge
+                    code={countryInfo.code}
+                    skin="sundial"
+                    mode={pal.mode}
+                    accent={pal.orbFill}
+                    shadow={pal.shadow}
+                    highlight={pal.textPrimary}
+                    glow={pal.orbGlow}
+                  />
+                )}
+              </motion.span>
             )}
           </div>
 
@@ -752,7 +774,7 @@ export function SundialCompact({
                 {time}
               </motion.span>
             )}
-            {showTemperature && tempStr && (
+            {showTemperature && (
               <motion.span
                 style={{
                   fontFamily: SERIF,
@@ -760,11 +782,12 @@ export function SundialCompact({
                   fontSize: size.labelSize,
                   lineHeight: 1,
                   fontWeight: 400,
+                  minWidth: 24,
                 }}
-                animate={{ color: pal.accentColor }}
+                animate={{ color: pal.accentColor, opacity: tempStr ? 1 : 0 }}
                 transition={{ duration: 1.8 }}
               >
-                {tempStr}
+                {tempStr || '\u00A0'}
               </motion.span>
             )}
           </div>

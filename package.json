@@ -1,21 +1,27 @@
 {
-  "name": "@qodin-co/sol",
+  "name": "@circadian/sol",
   "version": "0.2.3",
   "type": "module",
   "description": "Solar-aware React widget library with real-time phase transitions.",
+  "homepage": "https://circadian.dev",
   "repository": {
     "type": "git",
-    "url": "https://github.com/qodin-co/sol"
+    "url": "https://github.com/circadian-dev/sol"
+  },
+  "bugs": {
+    "url": "https://github.com/circadian-dev/sol/issues"
   },
   "license": "MIT",
-  "author": "qodin",
+  "author": "circadian",
   "keywords": [
     "react",
     "solar",
     "widget",
     "sun",
     "theme",
-    "clock"
+    "clock",
+    "circadian",
+    "ambient"
   ],
   "files": [
     "dist"
@@ -35,6 +41,10 @@
   "main": "./dist/index.js",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
   "scripts": {
     "build": "tsdown && bunx @tailwindcss/cli -i src/styles.css -o dist/styles.css --minify && bunx @tailwindcss/cli -i src/styles-no-preflight.css -o dist/styles-no-preflight.css --minify",
     "dev": "concurrently \"tsdown --watch\" \"bunx @tailwindcss/cli -i src/styles.css -o dist/styles.css --watch\"",

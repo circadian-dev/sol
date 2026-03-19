@@ -22,6 +22,7 @@ import { motion } from 'motion/react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { type SolarPhase, useSolarPosition } from '../../hooks/useSolarPosition';
 import { lerpColor } from '../../lib/solar-lerp';
+import { CONTENT_FADE } from '../../shared/content-fade';
 import { CompactFlagBadge } from '../../shared/flag-badge';
 import {
   WEATHER_ORB_DIM,
@@ -608,26 +609,40 @@ export function FoundryCompact({
       />
 
       {/* z=2  Weather backdrop */}
-      {showWeather && effectiveWeatherCategory && (
-        <div style={{ position: 'absolute', inset: 0, zIndex: 2 }}>
-          <WeatherBackdrop
-            category={effectiveWeatherCategory}
-            skin="foundry"
-            phaseColors={phaseColors}
-          />
-        </div>
+      {showWeather && (
+        <motion.div
+          animate={{ opacity: effectiveWeatherCategory ? 1 : 0 }}
+          transition={{ duration: 0.5, ease: 'easeOut' }}
+          style={{ position: 'absolute', inset: 0, zIndex: 2 }}
+        >
+          {effectiveWeatherCategory && (
+            <WeatherBackdrop
+              category={effectiveWeatherCategory}
+              skin="foundry"
+              phaseColors={phaseColors}
+            />
+          )}
+        </motion.div>
       )}
 
       {/* z=3  Weather layer */}
-      {showWeather && effectiveWeatherCategory && effectiveWeatherCategory !== 'clear' && (
-        <div style={{ position: 'absolute', inset: 0, zIndex: 3 }}>
-          <WeatherLayer
-            category={effectiveWeatherCategory}
-            skin="foundry"
-            opacity={effectiveWeatherCategory === 'thunder' ? 0.65 : 0.55}
-            phaseColors={phaseColors}
-          />
-        </div>
+      {showWeather && (
+        <motion.div
+          animate={{
+            opacity: effectiveWeatherCategory && effectiveWeatherCategory !== 'clear' ? 1 : 0,
+          }}
+          transition={{ duration: 0.5, ease: 'easeOut' }}
+          style={{ position: 'absolute', inset: 0, zIndex: 3 }}
+        >
+          {effectiveWeatherCategory && effectiveWeatherCategory !== 'clear' && (
+            <WeatherLayer
+              category={effectiveWeatherCategory}
+              skin="foundry"
+              opacity={effectiveWeatherCategory === 'thunder' ? 0.65 : 0.55}
+              phaseColors={phaseColors}
+            />
+          )}
+        </motion.div>
       )}
 
       {/* z=4  3-row content */}
@@ -669,16 +684,24 @@ export function FoundryCompact({
             >
               {palette.label}
             </motion.span>
-            {showFlag && countryInfo && (
-              <CompactFlagBadge
-                code={countryInfo.code}
-                skin="foundry"
-                mode={palette.mode}
-                accent={palette.accentColor}
-                shadow={palette.bg[0]}
-                highlight={palette.textPrimary}
-                glow={palette.flagGlow}
-              />
+            {showFlag && (
+              <motion.span
+                animate={{ opacity: countryInfo ? 1 : 0 }}
+                transition={CONTENT_FADE}
+                style={{ display: 'inline-flex', alignItems: 'center', width: 18, flexShrink: 0 }}
+              >
+                {countryInfo && (
+                  <CompactFlagBadge
+                    code={countryInfo.code}
+                    skin="foundry"
+                    mode={palette.mode}
+                    accent={palette.accentColor}
+                    shadow={palette.bg[0]}
+                    highlight={palette.textPrimary}
+                    glow={palette.flagGlow}
+                  />
+                )}
+              </motion.span>
             )}
           </div>
 
@@ -702,7 +725,7 @@ export function FoundryCompact({
                 {time}
               </motion.span>
             )}
-            {showTemperature && tempStr && (
+            {showTemperature && (
               <motion.span
                 style={{
                   fontFamily: SANS_DISPLAY,
@@ -710,11 +733,12 @@ export function FoundryCompact({
                   letterSpacing: '-0.01em',
                   fontWeight: 500,
                   lineHeight: 1,
+                  minWidth: 24,
                 }}
-                animate={{ color: palette.pillText }}
-                transition={{ duration: 1 }}
+                animate={{ color: palette.pillText, opacity: tempStr ? 1 : 0 }}
+                transition={{ duration: 1.2 }}
               >
-                {tempStr}
+                {tempStr || '\u00A0'}
               </motion.span>
             )}
           </div>

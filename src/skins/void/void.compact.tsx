@@ -33,9 +33,11 @@
 
 import * as ct from 'countries-and-timezones';
 import * as CountryFlags from 'country-flag-icons/react/3x2';
+import { motion } from 'motion/react';
 import { useEffect, useMemo, useRef } from 'react';
 import { type SolarPhase, useSolarPosition } from '../../hooks/useSolarPosition';
 import { lerpColor } from '../../lib/solar-lerp';
+import { CONTENT_FADE } from '../../shared/content-fade';
 import {
   WEATHER_ORB_DIM,
   WeatherBackdrop,
@@ -524,27 +526,40 @@ export function VoidCompact({
       />
 
       {/* z=2 Weather backdrop */}
-      {showWeather && effectiveWeatherCategory && (
-        <div style={{ position: 'absolute', inset: 0, zIndex: 2 }}>
+      <motion.div
+        style={{ position: 'absolute', inset: 0, zIndex: 2 }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: showWeather && effectiveWeatherCategory ? 1 : 0 }}
+        transition={CONTENT_FADE}
+      >
+        {showWeather && effectiveWeatherCategory && (
           <WeatherBackdrop
             category={effectiveWeatherCategory}
             skin="void"
             phaseColors={phaseColors}
           />
-        </div>
-      )}
+        )}
+      </motion.div>
 
       {/* z=3 Weather layer */}
-      {showWeather && effectiveWeatherCategory && effectiveWeatherCategory !== 'clear' && (
-        <div style={{ position: 'absolute', inset: 0, zIndex: 3 }}>
+      <motion.div
+        style={{ position: 'absolute', inset: 0, zIndex: 3 }}
+        initial={{ opacity: 0 }}
+        animate={{
+          opacity:
+            showWeather && effectiveWeatherCategory && effectiveWeatherCategory !== 'clear' ? 1 : 0,
+        }}
+        transition={CONTENT_FADE}
+      >
+        {showWeather && effectiveWeatherCategory && effectiveWeatherCategory !== 'clear' && (
           <WeatherLayer
             category={effectiveWeatherCategory}
             skin="void"
             opacity={isThunder ? 0.92 : 0.12}
             phaseColors={phaseColors}
           />
-        </div>
-      )}
+        )}
+      </motion.div>
 
       {/* z=4 3-row content */}
       <div
@@ -586,12 +601,20 @@ export function VoidCompact({
             >
               {pal.label}
             </span>
-            {showFlag && countryInfo?.FlagComponent && (
-              <CompactFlag
-                FlagComponent={countryInfo.FlagComponent}
-                border={`1px solid ${pal.pillBorder}40`}
-                mode={pal.mode}
-              />
+            {showFlag && (
+              <motion.span
+                animate={{ opacity: countryInfo?.FlagComponent ? 1 : 0 }}
+                transition={CONTENT_FADE}
+                style={{ display: 'inline-flex', alignItems: 'center', width: 18, flexShrink: 0 }}
+              >
+                {countryInfo?.FlagComponent && (
+                  <CompactFlag
+                    FlagComponent={countryInfo.FlagComponent}
+                    border={`1px solid ${pal.pillBorder}40`}
+                    mode={pal.mode}
+                  />
+                )}
+              </motion.span>
             )}
           </div>
 
@@ -612,8 +635,8 @@ export function VoidCompact({
                 {time}
               </span>
             )}
-            {showTemperature && tempStr && (
-              <span
+            {showTemperature && (
+              <motion.span
                 style={{
                   fontFamily: SANS,
                   fontSize: size.labelSize,
@@ -621,12 +644,13 @@ export function VoidCompact({
                   fontWeight: 300,
                   lineHeight: 1,
                   color: pal.textPrimary,
-                  opacity: 0.38,
-                  transition: 'color 2s ease-in-out',
+                  minWidth: 24,
                 }}
+                animate={{ opacity: tempStr ? 0.38 : 0 }}
+                transition={CONTENT_FADE}
               >
-                {tempStr}
-              </span>
+                {tempStr || '\u00A0'}
+              </motion.span>
             )}
           </div>
         </div>

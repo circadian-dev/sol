@@ -54,6 +54,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { type SolarPhase, useSolarPosition } from '../../hooks/useSolarPosition';
 import { lerpColor } from '../../lib/solar-lerp';
 import { useSolarTheme } from '../../provider/solar-theme-provider';
+import { CONTENT_FADE } from '../../shared/content-fade';
 import { PillFlagBadge } from '../../shared/flag-badge';
 import { PillWeatherGlyph } from '../../shared/pill-weather-glyphs';
 import {
@@ -879,6 +880,13 @@ export function TideWidget({
   }, [timezone]);
   const flagActive = showFlag && countryInfo !== null;
 
+  const pillMinWidth = useMemo(() => {
+    let w = 82;
+    if (showWeather) w += 36;
+    if (showFlag) w += 28;
+    return w;
+  }, [showWeather, showFlag]);
+
   const pillShowWeather = showWeather && effectiveCat !== null && effectiveCat !== 'clear';
   const pillPhaseIcon: 'sun' | 'moon' | 'dawn' | 'dusk' =
     phase === 'midnight' || phase === 'night'
@@ -1031,9 +1039,20 @@ export function TideWidget({
                 )}
 
                 {/* z=2 Weather backdrop */}
-                {showWeather && effectiveCat && (
-                  <WeatherBackdrop category={effectiveCat} skin="tide" phaseColors={phaseColors} />
-                )}
+                <motion.div
+                  style={{ position: 'absolute', inset: 0, zIndex: 2 }}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: showWeather && effectiveCat ? 1 : 0 }}
+                  transition={CONTENT_FADE}
+                >
+                  {showWeather && effectiveCat && (
+                    <WeatherBackdrop
+                      category={effectiveCat}
+                      skin="tide"
+                      phaseColors={phaseColors}
+                    />
+                  )}
+                </motion.div>
 
                 {/* z=3 Wave SVG + orb */}
                 <svg
@@ -1122,14 +1141,21 @@ export function TideWidget({
                 </svg>
 
                 {/* z=4 Weather layer */}
-                {showWeather && effectiveCat && (
-                  <WeatherLayer
-                    category={effectiveCat}
-                    skin="tide"
-                    opacity={isDaytime ? 0.72 : 0.9}
-                    phaseColors={phaseColors}
-                  />
-                )}
+                <motion.div
+                  style={{ position: 'absolute', inset: 0, zIndex: 4 }}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: showWeather && effectiveCat ? 1 : 0 }}
+                  transition={CONTENT_FADE}
+                >
+                  {showWeather && effectiveCat && (
+                    <WeatherLayer
+                      category={effectiveCat}
+                      skin="tide"
+                      opacity={isDaytime ? 0.72 : 0.9}
+                      phaseColors={phaseColors}
+                    />
+                  )}
+                </motion.div>
 
                 {/* z=5 Header */}
                 <div className="absolute top-0 left-0 right-0 px-5 pt-5" style={{ zIndex: 5 }}>
@@ -1342,6 +1368,7 @@ export function TideWidget({
             className="flex items-center gap-2 cursor-pointer select-none"
             style={{
               height: 36,
+              minWidth: pillMinWidth,
               paddingLeft: 10,
               paddingRight: 14,
               borderRadius: 18,
@@ -1443,28 +1470,23 @@ export function TideWidget({
              * highlight=textPrimary: bright anchor for the flag's light regions
              * glow=outerGlow: feeds the diffuse bioluminescent halo in PillFlagBadge
              */}
-            {flagActive && (
+            {showFlag && (
               <motion.span
-                initial={{ opacity: 0, scale: 0.55 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{
-                  duration: 0.4,
-                  ease: [0.34, 1.56, 0.64, 1],
-                }}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                }}
+                animate={{ opacity: flagActive ? 1 : 0 }}
+                transition={CONTENT_FADE}
+                style={{ display: 'flex', alignItems: 'center', width: 20, flexShrink: 0 }}
               >
-                <PillFlagBadge
-                  code={countryInfo?.code}
-                  skin="tide"
-                  mode={palette.mode}
-                  accent={palette.accentColor}
-                  shadow={palette.sea[0]}
-                  highlight={palette.textPrimary}
-                  glow={palette.outerGlow}
-                />
+                {flagActive && (
+                  <PillFlagBadge
+                    code={countryInfo?.code}
+                    skin="tide"
+                    mode={palette.mode}
+                    accent={palette.accentColor}
+                    shadow={palette.sea[0]}
+                    highlight={palette.textPrimary}
+                    glow={palette.outerGlow}
+                  />
+                )}
               </motion.span>
             )}
 
@@ -1474,11 +1496,12 @@ export function TideWidget({
                 fontSize: 13,
                 fontWeight: 300,
                 letterSpacing: '-0.01em',
+                minWidth: 28,
               }}
-              animate={{ color: palette.pillText }}
+              animate={{ color: palette.pillText, opacity: pillTempStr ? 1 : 0 }}
               transition={{ duration: 2 }}
             >
-              {pillTempStr}
+              {pillTempStr || '\u00A0'}
             </motion.span>
 
             <span

@@ -3,7 +3,7 @@
  *
  * Foundry skin — skeuomorphic machined-metal aesthetic.
  * This is the default skin. All token values migrated from the original
- * hardcoded constants in solar-theme-provider.client.tsx and QodinHeroShader.tsx.
+ * hardcoded constants in solar-theme-provider.client.tsx and SolarShaderBg.tsx.
  */
 
 import type { SolarPhase } from '../../hooks/useSolarPosition';
@@ -113,7 +113,7 @@ const WIDGET_PALETTES: Record<SolarPhase, WidgetPalette> = Object.fromEntries(
   ]),
 ) as Record<SolarPhase, WidgetPalette>;
 
-// ─── Shader palettes (was SHADER_PALETTES in QodinHeroShader) ────────────────
+// ─── Shader palettes (was SHADER_PALETTES in SolarShaderBg) ────────────────
 
 const SHADER_PALETTES: Record<SolarPhase, ShaderPalette> = {
   dawn: {

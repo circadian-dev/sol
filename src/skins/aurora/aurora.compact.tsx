@@ -18,6 +18,7 @@ import { motion } from 'motion/react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { type SolarPhase, useSolarPosition } from '../../hooks/useSolarPosition';
 import { lerpColor } from '../../lib/solar-lerp';
+import { CONTENT_FADE } from '../../shared/content-fade';
 import { CompactFlagBadge } from '../../shared/flag-badge';
 import {
   WEATHER_ORB_DIM,
@@ -675,14 +676,20 @@ export function AuroraCompact({
       )}
 
       {/* z=3  Weather backdrop */}
-      {showWeather && effectiveWeatherCategory && (
-        <div style={{ position: 'absolute', inset: 0, zIndex: 3 }}>
-          <WeatherBackdrop
-            category={effectiveWeatherCategory}
-            skin="aurora"
-            phaseColors={phaseColors}
-          />
-        </div>
+      {showWeather && (
+        <motion.div
+          animate={{ opacity: effectiveWeatherCategory ? 1 : 0 }}
+          transition={{ duration: 0.5, ease: 'easeOut' }}
+          style={{ position: 'absolute', inset: 0, zIndex: 3 }}
+        >
+          {effectiveWeatherCategory && (
+            <WeatherBackdrop
+              category={effectiveWeatherCategory}
+              skin="aurora"
+              phaseColors={phaseColors}
+            />
+          )}
+        </motion.div>
       )}
 
       {/* z=4  Weather layer */}
@@ -736,16 +743,24 @@ export function AuroraCompact({
             >
               {AUR[phase].label}
             </motion.span>
-            {showFlag && countryInfo && (
-              <CompactFlagBadge
-                code={countryInfo.code}
-                skin="aurora"
-                mode={pal.mode}
-                accent={pal.glow1}
-                shadow={pal.bg[0]}
-                highlight={pal.text}
-                glow={pal.glow2}
-              />
+            {showFlag && (
+              <motion.span
+                animate={{ opacity: countryInfo ? 1 : 0 }}
+                transition={CONTENT_FADE}
+                style={{ display: 'flex', alignItems: 'center', width: 16, flexShrink: 0 }}
+              >
+                {countryInfo && (
+                  <CompactFlagBadge
+                    code={countryInfo.code}
+                    skin="aurora"
+                    mode={pal.mode}
+                    accent={pal.glow1}
+                    shadow={pal.bg[0]}
+                    highlight={pal.text}
+                    glow={pal.glow2}
+                  />
+                )}
+              </motion.span>
             )}
           </div>
 
@@ -766,7 +781,7 @@ export function AuroraCompact({
                 {time}
               </motion.span>
             )}
-            {showTemperature && tempStr && (
+            {showTemperature && (
               <motion.span
                 style={{
                   fontFamily: SANS,
@@ -774,11 +789,12 @@ export function AuroraCompact({
                   letterSpacing: '0.03em',
                   fontWeight: 400,
                   lineHeight: 1,
+                  minWidth: 24,
                 }}
-                animate={{ color: pal.text }}
+                animate={{ color: pal.text, opacity: tempStr ? 1 : 0 }}
                 transition={{ duration: 1.4 }}
               >
-                {tempStr}
+                {tempStr || '\u00A0'}
               </motion.span>
             )}
           </div>

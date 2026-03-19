@@ -21,6 +21,7 @@ import { motion } from 'motion/react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { type SolarPhase, useSolarPosition } from '../../hooks/useSolarPosition';
 import { lerpColor } from '../../lib/solar-lerp';
+import { CONTENT_FADE } from '../../shared/content-fade';
 import { CompactFlagBadge } from '../../shared/flag-badge';
 import {
   WEATHER_ORB_DIM,
@@ -446,27 +447,40 @@ export function MeridianCompact({
       />
 
       {/* z=3  Weather backdrop */}
-      {showWeather && effectiveWeatherCategory && (
-        <div style={{ position: 'absolute', inset: 0, zIndex: 3 }}>
+      <motion.div
+        style={{ position: 'absolute', inset: 0, zIndex: 3 }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: showWeather && effectiveWeatherCategory ? 1 : 0 }}
+        transition={CONTENT_FADE}
+      >
+        {showWeather && effectiveWeatherCategory && (
           <WeatherBackdrop
             category={effectiveWeatherCategory}
             skin="meridian"
             phaseColors={phaseColors}
           />
-        </div>
-      )}
+        )}
+      </motion.div>
 
       {/* z=4  Weather layer */}
-      {showWeather && effectiveWeatherCategory && effectiveWeatherCategory !== 'clear' && (
-        <div style={{ position: 'absolute', inset: 0, zIndex: 4 }}>
+      <motion.div
+        style={{ position: 'absolute', inset: 0, zIndex: 4 }}
+        initial={{ opacity: 0 }}
+        animate={{
+          opacity:
+            showWeather && effectiveWeatherCategory && effectiveWeatherCategory !== 'clear' ? 1 : 0,
+        }}
+        transition={CONTENT_FADE}
+      >
+        {showWeather && effectiveWeatherCategory && effectiveWeatherCategory !== 'clear' && (
           <WeatherLayer
             category={effectiveWeatherCategory}
             skin="meridian"
             opacity={effectiveWeatherCategory === 'thunder' ? 0.42 : 0.32}
             phaseColors={phaseColors}
           />
-        </div>
-      )}
+        )}
+      </motion.div>
 
       {/* z=5  3-row content */}
       <div
@@ -509,16 +523,24 @@ export function MeridianCompact({
             </motion.span>
 
             {/* FLAG — meridian skin: sharp rect, near-greyscale, hairline border */}
-            {showFlag && countryInfo && (
-              <CompactFlagBadge
-                code={countryInfo.code}
-                skin="meridian"
-                mode={pal.mode}
-                accent={pal.accentColor}
-                shadow={pal.surface}
-                highlight={pal.textPrimary}
-                glow={pal.shadow}
-              />
+            {showFlag && (
+              <motion.span
+                animate={{ opacity: countryInfo ? 1 : 0 }}
+                transition={CONTENT_FADE}
+                style={{ display: 'inline-flex', alignItems: 'center', width: 18, flexShrink: 0 }}
+              >
+                {countryInfo && (
+                  <CompactFlagBadge
+                    code={countryInfo.code}
+                    skin="meridian"
+                    mode={pal.mode}
+                    accent={pal.accentColor}
+                    shadow={pal.surface}
+                    highlight={pal.textPrimary}
+                    glow={pal.shadow}
+                  />
+                )}
+              </motion.span>
             )}
           </div>
 
@@ -539,7 +561,7 @@ export function MeridianCompact({
                 {time}
               </motion.span>
             )}
-            {showTemperature && tempStr && (
+            {showTemperature && (
               <motion.span
                 style={{
                   fontFamily: SANS,
@@ -547,11 +569,12 @@ export function MeridianCompact({
                   letterSpacing: '0.04em',
                   fontWeight: 400,
                   lineHeight: 1,
+                  minWidth: 24,
                 }}
-                animate={{ color: pal.textPrimary }}
+                animate={{ color: pal.textPrimary, opacity: tempStr ? 1 : 0 }}
                 transition={{ duration: 1.5 }}
               >
-                {tempStr}
+                {tempStr || '\u00A0'}
               </motion.span>
             )}
           </div>

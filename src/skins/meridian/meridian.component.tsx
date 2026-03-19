@@ -22,6 +22,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { type SolarPhase, useSolarPosition } from '../../hooks/useSolarPosition';
 import { lerpColor } from '../../lib/solar-lerp';
 import { useSolarTheme } from '../../provider/solar-theme-provider';
+import { CONTENT_FADE } from '../../shared/content-fade';
 import { PillFlagBadge } from '../../shared/flag-badge';
 import { PillWeatherGlyph } from '../../shared/pill-weather-glyphs';
 import { WeatherIcon, type WeatherIconKey } from '../../shared/solar-weather-icons';
@@ -790,6 +791,13 @@ export function MeridianWidget({
   const pillShowWeather =
     showWeather && effectiveWeatherIcon !== null && effectiveWeatherIcon !== 'clear';
 
+  const pillMinWidth = useMemo(() => {
+    let w = 82;
+    if (showWeather) w += 36;
+    if (showFlag) w += 28;
+    return w;
+  }, [showWeather, showFlag]);
+
   function fmtMin(m: number) {
     const h = Math.floor(m / 60) % 24;
     const mm = Math.round(m % 60);
@@ -878,13 +886,19 @@ export function MeridianWidget({
                   border: `1px solid rgba(0,0,0,${palette.mode === 'dark' ? '0.20' : '0.08'})`,
                 }}
               >
-                {showWeather && effectiveWeatherCategory && (
-                  <WeatherBackdrop
-                    category={effectiveWeatherCategory}
-                    skin="meridian"
-                    phaseColors={phaseColors}
-                  />
-                )}
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: showWeather && effectiveWeatherCategory ? 1 : 0 }}
+                  transition={CONTENT_FADE}
+                >
+                  {showWeather && effectiveWeatherCategory && (
+                    <WeatherBackdrop
+                      category={effectiveWeatherCategory}
+                      skin="meridian"
+                      phaseColors={phaseColors}
+                    />
+                  )}
+                </motion.div>
 
                 <svg
                   aria-hidden="true"
@@ -935,14 +949,20 @@ export function MeridianWidget({
                   />
                 </svg>
 
-                {showWeather && effectiveWeatherCategory && (
-                  <WeatherLayer
-                    category={effectiveWeatherCategory}
-                    skin="meridian"
-                    opacity={effectiveIsDaytime ? 0.62 : 0.78}
-                    phaseColors={phaseColors}
-                  />
-                )}
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: showWeather && effectiveWeatherCategory ? 1 : 0 }}
+                  transition={CONTENT_FADE}
+                >
+                  {showWeather && effectiveWeatherCategory && (
+                    <WeatherLayer
+                      category={effectiveWeatherCategory}
+                      skin="meridian"
+                      opacity={effectiveIsDaytime ? 0.62 : 0.78}
+                      phaseColors={phaseColors}
+                    />
+                  )}
+                </motion.div>
 
                 {/* Header */}
                 <div className="absolute top-0 left-0 right-0 px-5 pt-5" style={{ zIndex: 5 }}>
@@ -1190,6 +1210,7 @@ export function MeridianWidget({
             className="flex items-center gap-2 cursor-pointer select-none"
             style={{
               height: 34,
+              minWidth: pillMinWidth,
               paddingLeft: 10,
               paddingRight: 13,
               borderRadius: 17,
@@ -1283,18 +1304,19 @@ export function MeridianWidget({
               </AnimatePresence>
             </span>
 
-            {pillTempStr && (
+            {showWeather && (
               <motion.span
                 style={{
                   fontFamily: SANS,
                   fontSize: 12,
                   fontWeight: 500,
                   letterSpacing: '-0.01em',
+                  minWidth: 28,
                 }}
-                animate={{ color: palette.pillText }}
+                animate={{ color: palette.pillText, opacity: pillTempStr ? 1 : 0 }}
                 transition={{ duration: 1.5 }}
               >
-                {pillTempStr}
+                {pillTempStr || '\u00A0'}
               </motion.span>
             )}
 
@@ -1321,25 +1343,23 @@ export function MeridianWidget({
               {palette.label}
             </motion.span>
 
-            {flagActive && (
+            {showFlag && (
               <motion.span
-                initial={{ opacity: 0, scale: 0.6 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.35 }}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                }}
+                animate={{ opacity: flagActive ? 1 : 0 }}
+                transition={CONTENT_FADE}
+                style={{ display: 'flex', alignItems: 'center', width: 20, flexShrink: 0 }}
               >
-                <PillFlagBadge
-                  code={countryInfo.code}
-                  skin="meridian"
-                  mode={palette.mode}
-                  accent={palette.accentColor}
-                  shadow={palette.surface}
-                  highlight={palette.textPrimary}
-                  glow={palette.shadow}
-                />
+                {flagActive && (
+                  <PillFlagBadge
+                    code={countryInfo.code}
+                    skin="meridian"
+                    mode={palette.mode}
+                    accent={palette.accentColor}
+                    shadow={palette.surface}
+                    highlight={palette.textPrimary}
+                    glow={palette.shadow}
+                  />
+                )}
               </motion.span>
             )}
 

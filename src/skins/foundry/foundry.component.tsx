@@ -29,6 +29,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { type SolarPhase, useSolarPosition } from '../../hooks/useSolarPosition';
 import { lerpColor } from '../../lib/solar-lerp';
 import { useSolarTheme } from '../../provider/solar-theme-provider';
+import { CONTENT_FADE } from '../../shared/content-fade';
 import { PillFlagBadge } from '../../shared/flag-badge';
 import { PillWeatherGlyph } from '../../shared/pill-weather-glyphs';
 import { WeatherIcon, type WeatherIconKey } from '../../shared/solar-weather-icons';
@@ -905,6 +906,13 @@ export function FoundryWidget({
   const pillShowWeather =
     showWeather && effectiveWeatherIcon !== null && effectiveWeatherIcon !== 'clear';
 
+  const pillMinWidth = useMemo(() => {
+    let w = 82;
+    if (showWeather) w += 36;
+    if (showFlag) w += 28;
+    return w;
+  }, [showWeather, showFlag]);
+
   function fmtMin(m: number) {
     const h = Math.floor(m / 60) % 24;
     const mm = Math.round(m % 60);
@@ -1033,12 +1041,20 @@ export function FoundryWidget({
                 </motion.div>
 
                 {/* z=2 Weather backdrop */}
-                {showWeather && effectiveWeatherCategory && (
-                  <WeatherBackdrop
-                    category={effectiveWeatherCategory}
-                    skin="foundry"
-                    phaseColors={phaseColors}
-                  />
+                {showWeather && (
+                  <motion.div
+                    animate={{ opacity: effectiveWeatherCategory ? 1 : 0 }}
+                    transition={{ duration: 0.5, ease: 'easeOut' }}
+                    style={{ position: 'absolute', inset: 0 }}
+                  >
+                    {effectiveWeatherCategory && (
+                      <WeatherBackdrop
+                        category={effectiveWeatherCategory}
+                        skin="foundry"
+                        phaseColors={phaseColors}
+                      />
+                    )}
+                  </motion.div>
                 )}
 
                 {/* z=3 Arc + orb */}
@@ -1133,13 +1149,21 @@ export function FoundryWidget({
                 </svg>
 
                 {/* z=4 Weather overlay */}
-                {showWeather && effectiveWeatherCategory && (
-                  <WeatherLayer
-                    category={effectiveWeatherCategory}
-                    skin="foundry"
-                    opacity={effectiveIsDaytime ? 0.78 : 0.95}
-                    phaseColors={phaseColors}
-                  />
+                {showWeather && (
+                  <motion.div
+                    animate={{ opacity: effectiveWeatherCategory ? 1 : 0 }}
+                    transition={{ duration: 0.5, ease: 'easeOut' }}
+                    style={{ position: 'absolute', inset: 0 }}
+                  >
+                    {effectiveWeatherCategory && (
+                      <WeatherLayer
+                        category={effectiveWeatherCategory}
+                        skin="foundry"
+                        opacity={effectiveIsDaytime ? 0.78 : 0.95}
+                        phaseColors={phaseColors}
+                      />
+                    )}
+                  </motion.div>
                 )}
 
                 {/* z=5 Header */}
@@ -1209,21 +1233,10 @@ export function FoundryWidget({
                   >
                     ↑ {sunriseFmt}
                   </span>
-                  {flagActive ? (
+                  {showFlag && (
                     <motion.span
-                      key={countryInfo?.name}
-                      initial={{
-                        opacity: 0,
-                        y: 3,
-                      }}
-                      animate={{
-                        opacity: 0.75,
-                        y: 0,
-                      }}
-                      exit={{ opacity: 0, y: 3 }}
-                      transition={{
-                        duration: 0.55,
-                      }}
+                      animate={{ opacity: flagActive ? 0.75 : 0 }}
+                      transition={CONTENT_FADE}
                       style={{
                         display: 'flex',
                         alignItems: 'center',
@@ -1245,7 +1258,7 @@ export function FoundryWidget({
                           opacity: 0.5,
                         }}
                       />
-                      {countryInfo?.name}
+                      {countryInfo?.name ?? '\u00A0'}
                       <span
                         style={{
                           display: 'block',
@@ -1257,7 +1270,7 @@ export function FoundryWidget({
                         }}
                       />
                     </motion.span>
-                  ) : null}
+                  )}
                   <span
                     className="text-[10px] uppercase tracking-[0.12em]"
                     style={{
@@ -1347,6 +1360,7 @@ export function FoundryWidget({
             className="flex items-center gap-2 cursor-pointer select-none"
             style={{
               height: 36,
+              minWidth: pillMinWidth,
               paddingLeft: 10,
               paddingRight: 14,
               borderRadius: 18,
@@ -1444,42 +1458,45 @@ export function FoundryWidget({
               </AnimatePresence>
             </span>
 
-            {flagActive && (
+            {showFlag && (
               <motion.span
-                initial={{ opacity: 0, scale: 0.55 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{
-                  duration: 0.4,
-                  ease: [0.34, 1.56, 0.64, 1],
-                }}
+                animate={{ opacity: flagActive ? 1 : 0 }}
+                transition={CONTENT_FADE}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
+                  width: 20,
+                  flexShrink: 0,
                 }}
               >
-                <PillFlagBadge
-                  code={countryInfo.code}
-                  skin="foundry"
-                  mode={palette.mode}
-                  accent={palette.accentColor}
-                  shadow={palette.bg[0]}
-                  highlight={palette.textPrimary}
-                  glow={palette.flagGlow}
-                />
+                {flagActive && (
+                  <PillFlagBadge
+                    code={countryInfo.code}
+                    skin="foundry"
+                    mode={palette.mode}
+                    accent={palette.accentColor}
+                    shadow={palette.bg[0]}
+                    highlight={palette.textPrimary}
+                    glow={palette.flagGlow}
+                  />
+                )}
               </motion.span>
             )}
 
-            <motion.span
-              className="tabular-nums text-[13px] font-light"
-              style={{
-                letterSpacing: '-0.01em',
-                fontFamily: "'SF Pro Display','Helvetica Neue',sans-serif",
-              }}
-              animate={{ color: palette.pillText }}
-              transition={{ duration: 2 }}
-            >
-              {pillTempStr}
-            </motion.span>
+            {showWeather && (
+              <motion.span
+                className="tabular-nums text-[13px] font-light"
+                style={{
+                  letterSpacing: '-0.01em',
+                  fontFamily: "'SF Pro Display','Helvetica Neue',sans-serif",
+                  minWidth: 28,
+                }}
+                animate={{ color: palette.pillText, opacity: pillTempStr ? 1 : 0 }}
+                transition={{ duration: 2 }}
+              >
+                {pillTempStr || '\u00A0'}
+              </motion.span>
+            )}
 
             <span
               style={{
