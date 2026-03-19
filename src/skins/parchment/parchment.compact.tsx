@@ -694,7 +694,7 @@ export function ParchmentCompact({
                   letterSpacing: '-0.01em',
                   fontVariantNumeric: 'tabular-nums',
                   lineHeight: 1,
-                  textAlign: 'right', 
+                  textAlign: 'right',
                 }}
                 animate={{ opacity: tempStr ? 1 : 0 }}
                 transition={CONTENT_FADE}

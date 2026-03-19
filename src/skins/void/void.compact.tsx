@@ -644,7 +644,7 @@ export function VoidCompact({
                   fontWeight: 300,
                   lineHeight: 1,
                   color: pal.textPrimary,
-                  textAlign: 'right', 
+                  textAlign: 'right',
                 }}
                 animate={{ opacity: tempStr ? 0.38 : 0 }}
                 transition={CONTENT_FADE}

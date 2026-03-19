@@ -548,8 +548,7 @@ export function MineralCompact({
                   letterSpacing: '0.04em',
                   fontWeight: 600,
                   lineHeight: 1,
-                  textAlign: 'right', 
-
+                  textAlign: 'right',
                 }}
                 animate={{ color: pal.accentColor, opacity: tempStr ? 1 : 0 }}
                 transition={{ duration: 1.2 }}

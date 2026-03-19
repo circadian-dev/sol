@@ -785,7 +785,7 @@ export function TideCompact({
                   letterSpacing: '0.06em',
                   fontWeight: 500,
                   lineHeight: 1,
-                  textAlign: 'right', 
+                  textAlign: 'right',
                 }}
                 animate={{ color: pal.accentColor, opacity: tempStr ? 1 : 0 }}
                 transition={{ duration: 1.6 }}
