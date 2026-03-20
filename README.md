@@ -45,6 +45,8 @@ Sol is the flagship package from [Circadian](https://circadian.dev) — a platfo
 bun add @circadian/sol
 # or
 npm install @circadian/sol
+# or (Deno / Fresh)
+deno add npm:@circadian/sol
 ```
 
 `@circadian/sol` gives you a full `SolarWidget`, a `CompactWidget`, 10 skins, 9 solar phases, optional live weather, optional flag display, and a dev-only timeline scrubber via `SolarDevTools`. Solar position is computed locally from latitude, longitude, timezone, and current time — no solar API required.
@@ -59,7 +61,7 @@ npm install @circadian/sol
 - **Built-in fallback strategy** — geolocation → browser timezone → timezone centroid
 - **Optional live weather** — powered by Open-Meteo (no API key required)
 - **Dev preview tooling** — `SolarDevTools` lets you scrub through the day and preview phase colors
-- **SSR-safe** — works in Next.js, Remix, TanStack Start, Blade, and Vite
+- **SSR-safe** — works in Next.js, Remix, TanStack Start, Blade, Fresh, and Vite
 
 ---
 
@@ -281,6 +283,80 @@ import Solar from '../components/solar-widget.client';
 export default function Page() {
   return <Solar />;
 }
+```
+
+---
+
+### Fresh (v2)
+
+Fresh uses Preact, so Sol works via `preact/compat`. Add the React compatibility aliases to your `vite.config.ts` and `deno.json`, then create an [island](https://fresh.deno.dev/docs/concepts/islands) for the widget.
+
+**1. Install**
+
+```bash
+deno add npm:@circadian/sol
+```
+
+**2. Configure Vite aliases** — add `resolve.alias` to `vite.config.ts`:
+
+```ts
+// vite.config.ts
+import { defineConfig } from "vite";
+import { fresh } from "@fresh/plugin-vite";
+
+export default defineConfig({
+  plugins: [fresh()],
+  resolve: {
+    alias: {
+      "react": "preact/compat",
+      "react-dom": "preact/compat",
+      "react/jsx-runtime": "preact/jsx-runtime",
+      "react/jsx-dev-runtime": "preact/jsx-runtime",
+      "react-dom/client": "preact/compat/client",
+    },
+  },
+});
+```
+
+**3. Add import map entries** — add to the `"imports"` in `deno.json`:
+
+```jsonc
+// deno.json (imports section)
+{
+  "imports": {
+    "react": "npm:preact@^10.27.2/compat",
+    "react-dom": "npm:preact@^10.27.2/compat",
+    "react/jsx-runtime": "npm:preact@^10.27.2/jsx-runtime",
+    "react-dom/client": "npm:preact@^10.27.2/compat/client"
+  }
+}
+```
+
+**4. Create an island** — islands are client-hydrated in Fresh, which is what Sol needs:
+
+```tsx
+// islands/SolWidget.tsx
+import { SolarThemeProvider, SolarWidget } from '@circadian/sol';
+
+export default function SolWidget() {
+  return (
+    <SolarThemeProvider initialDesign="foundry">
+      <SolarWidget showWeather showFlag />
+    </SolarThemeProvider>
+  );
+}
+```
+
+**5. Use it in a route:**
+
+```tsx
+// routes/index.tsx
+import { define } from "../utils.ts";
+import SolWidget from "../islands/SolWidget.tsx";
+
+export default define.page(function Home() {
+  return <SolWidget />;
+});
 ```
 
 ---
@@ -585,7 +661,7 @@ import type {
 | ✅ | Skin-aware country flags |
 | ✅ | Dev timeline scrubber |
 | ✅ | Self-contained CSS (no Tailwind required in host app) |
-| ✅ | SSR-safe (Next.js, Remix, TanStack Start, Blade, Vite) |
+| ✅ | SSR-safe (Next.js, Remix, TanStack Start, Blade, Fresh, Vite) |
 | ❌ | No solar API key needed |
 | ❌ | No weather API key needed |
 | ❌ | No Tailwind needed in your app |

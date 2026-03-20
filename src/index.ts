@@ -6,6 +6,9 @@ export { useSolarTheme } from './provider/solar-theme-provider';
 export { SolarWidget } from './widgets/solar-widget.shell';
 export { CompactWidget } from './widgets/compact-widget.shell';
 
+// Shader background
+export { SolarShaderBg, SolarShaderBgFull } from './shared/solar-shader-bg';
+
 // Types — from skin type definitions
 export type {
   DesignMode,
