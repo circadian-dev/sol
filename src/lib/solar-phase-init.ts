@@ -64,12 +64,10 @@ export function getSolarPhaseInitScript(skins: Record<DesignMode, SkinDefinition
     // ── 2. Resolve phase ─────────────────────────────────────────────────────
     // Priority order:
     //   a) sessionStorage override (set by showcase time slider)
-    //   b) localStorage 'last phase' fallback (survives reloads on blog/changelog)
+    //   b) localStorage 'last phase' fallback (survives reloads)
     //   c) Clock-computed phase (live fallback)
     //
-    // We do NOT clear the override on reload here — that caused blog/changelog
-    // pages to flash to a wrong phase. The "Go Live" button in the showcase
-    // explicitly calls setSessionPhaseOverride(null) to clear both storages.
+    
 
     var PHASE_KEY      = 'sol-phase-override';
     var LAST_PHASE_KEY = 'sol-last-phase';
@@ -86,7 +84,7 @@ export function getSolarPhaseInitScript(skins: Record<DesignMode, SkinDefinition
         hasOverride = true;
       }
 
-      // b) localStorage fallback — only on non-root pages (blog/changelog)
+      // b) localStorage fallback — only on non-root pages
       if (!hasOverride && window.location.pathname !== '/') {
         var lv = localStorage.getItem(LAST_PHASE_KEY);
         if (lv && VALID_PHASES.indexOf(lv) !== -1) {

@@ -3,8 +3,6 @@
 // Persists a manual phase override across same-tab client-side navigation.
 //
 // Design constraints:
-//   ✓ Showcase → Blog/Changelog (client nav): phase override is preserved
-//   ✓ Blog/Changelog page reload: override is preserved (reads from sessionStorage)
 //   ✓ Tab close: everything cleared (sessionStorage behaviour)
 //   ✓ Explicit "Go Live" clears the override
 //   ✓ Reload in live mode: live flag is restored, button stays disabled
@@ -101,7 +99,6 @@ export function getSessionPhaseOverride(): SolarPhase | null {
     if (session) return session;
 
     // Secondary: localStorage fallback for reloads.
-    // Only use this if we're on a non-showcase page (blog/changelog).
     // We detect this by checking if the current path is not the root.
     if (typeof window !== 'undefined' && window.location.pathname !== '/') {
       const local = localStorage.getItem(LAST_PHASE_KEY) as SolarPhase | null;

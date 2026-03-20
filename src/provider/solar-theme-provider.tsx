@@ -1,7 +1,6 @@
 'use client';
 
 // provider/solar-theme-provider.tsx
-// Key fix: removed the isPageReload() clear — that was causing blog/changelog
 // pages to lose the phase override on reload, snapping to a wrong clock phase.
 // Phase override now persists through reloads via localStorage (sol-last-phase).
 // Explicit "Go Live" in the showcase calls setOverridePhase(null) to clear both.
@@ -340,7 +339,6 @@ export function SolarThemeProvider({
   // ── Phase override — seeded from sessionStorage/localStorage on mount ─────
   // KEY FIX: We no longer call isPageReload() to clear the override.
   // getSessionPhaseOverride() now handles the localStorage fallback itself,
-  // so blog/changelog reloads correctly restore the last-set phase.
   // Isolated instances (test page) skip session persistence entirely.
   const [overridePhase, setOverridePhaseState] = useState<SolarPhase | null>(() => {
     if (typeof window === 'undefined') return null;
