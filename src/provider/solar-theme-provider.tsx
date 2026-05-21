@@ -32,6 +32,7 @@ import {
 } from '../hooks/useSolarPosition';
 import { useCountryCodeFromGeolocation } from '../lib/geolocation';
 import { injectWidgetCSS } from '../lib/inject-widget-css';
+import { cityFromTimezone, fetchReverseGeocode } from '../lib/reverse-geocode';
 import {
   UNIVERSAL_SEASON_MODIFIERS,
   applySeasonalModifier,
@@ -58,6 +59,18 @@ export interface SolarTheme {
   latitude: number | null;
   longitude: number | null;
   coordsReady: boolean;
+  /**
+   * Nearest city or locality name for the user's current position.
+   *
+   * Resolution happens in two phases:
+   *  1. Instant (no permission): parsed from the IANA timezone string.
+   *     "Europe/Copenhagen" → "Copenhagen"  (available immediately)
+   *  2. Precise (after geolocation): reverse-geocoded from exact lat/lng.
+   *     55.86°N, 9.84°E → "Horsens"        (replaces the centroid value)
+   *
+   * null only during the brief SSR window before the provider mounts.
+   */
+  city: string | null;
   setOverridePhase: (phase: SolarPhase | null) => void;
   blend: SolarBlend;
   design: DesignMode;
@@ -291,6 +304,7 @@ const SolarThemeCtx = createContext<SolarTheme>({
   latitude: null,
   longitude: null,
   coordsReady: false,
+  city: null,
   setOverridePhase: noop,
   blend: { phase: SSR_PHASE, nextPhase: SSR_PHASE, t: 0 },
   design: 'foundry',
@@ -354,6 +368,7 @@ export function SolarThemeProvider({
   const [longitude, setLongitude] = useState<number | null>(null);
   const [timezone, setTimezone] = useState<string | null>(null);
   const [coordsReady, setCoordsReady] = useState(false);
+  const [city, setCity] = useState<string | null>(null);
 
   // ── Simulated date — set by SolarDevTools when scrubbing ──────────────────
   const [simulatedDate, setSimulatedDate] = useState<Date | undefined>(undefined);
@@ -397,6 +412,7 @@ export function SolarThemeProvider({
   useLayoutEffect(() => {
     const browserTZ = getBrowserTimezone();
     setTimezone(browserTZ);
+    setCity(cityFromTimezone(browserTZ));
     const coords = fallbackCoordsFromTZ(browserTZ);
     if (coords) {
       setLatitude(coords[0]);
@@ -448,14 +464,26 @@ export function SolarThemeProvider({
 
   // ── Geolocation updates ──────────────────────────────────────────────────────
   useEffect(() => {
-    if (geo.position?.coords) {
-      const { latitude: lat, longitude: lon } = geo.position.coords;
-      setLatitude(lat);
-      setLongitude(lon);
-      const tz = coordsToTimezone(lat, lon);
-      if (tz) setTimezone(tz);
-      setCoordsReady(true);
+    if (!geo.position?.coords) return;
+
+    const { latitude: lat, longitude: lon } = geo.position.coords;
+    setLatitude(lat);
+    setLongitude(lon);
+    setCoordsReady(true);
+
+    const tz = coordsToTimezone(lat, lon);
+    if (tz) {
+      setTimezone(tz);
+      setCity(cityFromTimezone(tz));
     }
+
+    // Precise reverse geocode — refines "Copenhagen" → "Horsens", etc.
+    // Fires only when real geolocation resolves, not on centroid.
+    const controller = new AbortController();
+    fetchReverseGeocode(lat, lon, controller.signal).then((name) => {
+      if (name) setCity(name);
+    });
+    return () => controller.abort();
   }, [geo.position]);
 
   useEffect(() => {
@@ -523,6 +551,7 @@ export function SolarThemeProvider({
     latitude,
     longitude,
     coordsReady,
+    city,
     setOverridePhase,
     blend: activeBlend,
     design,
