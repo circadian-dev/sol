@@ -267,6 +267,14 @@ export interface UseSolarPositionOptions {
   timezone?: string | null;
   updateIntervalMs?: number;
   simulatedDate?: Date;
+  /**
+   * Seeds the initial phase before the NOAA solar math runs.
+   * Without this, the hook starts with `phase: 'morning'`, causing a
+   * one-frame flash of the morning palette/shader on first render before
+   * the useLayoutEffect corrects it. Host apps that already know the
+   * correct phase (e.g. via a blocking init script) can pass it in here.
+   */
+  initialPhase?: SolarPhase;
 }
 
 export interface UseSolarPositionReturn extends SolarPosition {
@@ -299,7 +307,14 @@ const DEFAULT_LON = -0.1278;
 const DEFAULT_TZ = 'Europe/London';
 
 export function useSolarPosition(options: UseSolarPositionOptions = {}): UseSolarPositionReturn {
-  const { latitude, longitude, timezone, updateIntervalMs = 10_000, simulatedDate } = options;
+  const {
+    latitude,
+    longitude,
+    timezone,
+    updateIntervalMs = 10_000,
+    simulatedDate,
+    initialPhase,
+  } = options;
 
   const lat = latitude ?? DEFAULT_LAT;
   const lon = longitude ?? DEFAULT_LON;
@@ -310,17 +325,21 @@ export function useSolarPosition(options: UseSolarPositionOptions = {}): UseSola
   // Start with a stable SSR-safe default so server and client hydration match
   // (no hydration warnings). The real position is computed in useLayoutEffect
   // below — which fires BEFORE the browser paints — so users never see the
-  // default "morning" state.
-  const [position, setPosition] = useState<SolarPosition>({
+  // default state in most cases.
+  //
+  // `initialPhase` lets a host app seed the correct phase so the very first
+  // render (e.g. SolarShaderBg) paints the right palette instead of flashing
+  // morning for one frame before the layout effect runs.
+  const [position, setPosition] = useState<SolarPosition>(() => ({
     altitude: 45,
     azimuth: 180,
     dayProgress: 0.5,
     nightProgress: 0.5,
     isDaytime: true,
-    phase: 'morning' as SolarPhase,
+    phase: (initialPhase ?? 'morning') as SolarPhase,
     times: { sunrise: 360, solarNoon: 720, sunset: 1080, dawnCivil: 330, duskCivil: 1110 },
     localMinutes: 720,
-  });
+  }));
   const [isReady, setIsReady] = useState(false);
 
   // ── Compute real position before first paint ─────────────────────────────

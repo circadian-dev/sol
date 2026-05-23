@@ -169,11 +169,29 @@ function applyPhaseToDOM(
   }
 }
 
-function readPhaseFromDOM(): SolarPhase {
-  if (typeof document === 'undefined') return 'morning';
+function readPhaseFromDOM(): SolarPhase | null {
+  if (typeof document === 'undefined') return null;
   const attr = document.documentElement.getAttribute('data-solar-phase') as SolarPhase | null;
   if (attr && (ALL_PHASES as string[]).includes(attr)) return attr;
-  return 'morning';
+  return null;
+}
+
+/**
+ * Resolve the phase to use before `useSolarPosition` is ready.
+ *
+ * Precedence:
+ *  1. The `data-solar-phase` DOM attribute (set by a blocking init script
+ *     in the host app — most accurate, runs at real load time in the browser).
+ *  2. The `initialPhase` prop (caller-supplied — e.g. Whisk passes the phase
+ *     it computed in its own init script that writes `data-wsk-phase`).
+ *  3. A final hardcoded 'morning' fallback.
+ *
+ * The previous implementation always fell back to 'morning' when the DOM
+ * attribute was missing, which caused a one-frame morning flash for host
+ * apps using a different init-script attribute (e.g. Whisk's `data-wsk-phase`).
+ */
+function resolveInitialPhase(initialPhase?: SolarPhase): SolarPhase {
+  return readPhaseFromDOM() ?? initialPhase ?? 'morning';
 }
 
 function readSkinFromDOM(): DesignMode {
@@ -336,6 +354,14 @@ interface Props {
   children: ReactNode;
   initialDesign?: DesignMode;
   /**
+   * Phase to use before the solar position has been computed.
+   * The host app's blocking init script (e.g. Whisk's `data-wsk-phase` writer)
+   * generally knows the correct phase before React mounts. Passing it here
+   * prevents the one-frame 'morning' flash on first paint when neither the
+   * DOM attribute (`data-solar-phase`) nor `solar.isReady` are available.
+   */
+  initialPhase?: SolarPhase;
+  /**
    * When true, the provider renders a wrapper <div style="display:contents">
    * and scopes all CSS vars to that element via a unique #id selector rather
    * than :root. Use this when multiple providers exist on the same page
@@ -357,6 +383,7 @@ interface Props {
 export function SolarThemeProvider({
   children,
   initialDesign = 'foundry',
+  initialPhase,
   isolated = false,
   seasonOverride: seasonOverrideProp,
   disableSeasonalBlend = false,
@@ -504,12 +531,22 @@ export function SolarThemeProvider({
   }, [coordsReady, geo.permission, geo.error]);
 
   // ── Solar position ────────────────────────────────────────────────────────────
-  const solar = useSolarPosition({ latitude, longitude, timezone, updateIntervalMs: 5_000 });
+  // `initialPhase` is forwarded so the hook seeds its initial state with the
+  // correct phase instead of the hardcoded 'morning' default — preventing a
+  // one-frame palette flash on first render before useLayoutEffect runs.
+  const solar = useSolarPosition({
+    latitude,
+    longitude,
+    timezone,
+    updateIntervalMs: 5_000,
+    initialPhase,
+  });
 
   // Single gate: use computed solar only when we have real coords and no override.
-  // Until then, fall back to the init-script's phase (read from the DOM).
+  // Until then, prefer the init-script's DOM attribute, fall back to the
+  // `initialPhase` prop, then finally 'morning'.
   const activePhase: SolarPhase =
-    overridePhase ?? (solar.isReady ? solar.phase : readPhaseFromDOM());
+    overridePhase ?? (solar.isReady ? solar.phase : resolveInitialPhase(initialPhase));
   const activeBlend: SolarBlend = overridePhase
     ? { phase: overridePhase, nextPhase: overridePhase, t: 0 }
     : solar.isReady
