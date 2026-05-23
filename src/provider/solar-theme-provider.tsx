@@ -71,6 +71,12 @@ export interface SolarTheme {
    * null only during the brief SSR window before the provider mounts.
    */
   city: string | null;
+  /**
+   * ISO 3166-1 alpha-2 country code for the user's current position,
+   * e.g. "DK", "GB", "US". Resolved via geolocation (same source as city).
+   * null until geolocation resolves or if permission is denied.
+   */
+  countryCode: string | null;
   setOverridePhase: (phase: SolarPhase | null) => void;
   blend: SolarBlend;
   design: DesignMode;
@@ -305,6 +311,7 @@ const SolarThemeCtx = createContext<SolarTheme>({
   longitude: null,
   coordsReady: false,
   city: null,
+  countryCode: null,
   setOverridePhase: noop,
   blend: { phase: SSR_PHASE, nextPhase: SSR_PHASE, t: 0 },
   design: 'foundry',
@@ -552,6 +559,7 @@ export function SolarThemeProvider({
     longitude,
     coordsReady,
     city,
+    countryCode: geo.countryCode ?? null,
     setOverridePhase,
     blend: activeBlend,
     design,
