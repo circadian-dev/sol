@@ -59,6 +59,7 @@ deno add npm:@circadian/sol
 - **10 skins** — `foundry`, `paper`, `signal`, `meridian`, `mineral`, `aurora`, `tide`, `void`, `sundial`, `parchment`
 - **9 solar phases** — `midnight`, `night`, `dawn`, `sunrise`, `morning`, `solar-noon`, `afternoon`, `sunset`, `dusk`
 - **4 seasons** — automatic seasonal palette blending computed from date + hemisphere, with smooth crossfades at solstice/equinox boundaries
+- **10 animation presets** — `aurora`, `tide`, `foundry`, `mineral`, `paper`, `meridian`, `sundial`, `signal`, `void`, `still` (plus `custom`), decoupled from skin selection so any palette can pair with any motion personality
 - **Built-in fallback strategy** — geolocation → browser timezone → timezone centroid
 - **Optional live weather** — powered by Open-Meteo (no API key required)
 - **Dev preview tooling** — `SolarDevTools` lets you scrub through the day and preview phase colors
