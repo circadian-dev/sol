@@ -9,6 +9,17 @@ export { CompactWidget } from './widgets/compact-widget.shell';
 // Shader background
 export { SolarShaderBg, SolarShaderBgFull } from './shared/solar-shader-bg';
 
+// Animation presets — independent of skin selection
+export type {
+  ShaderAnimationPreset,
+  MotionProfile,
+} from './shared/shader-animation-presets';
+export {
+  ANIMATION_PRESETS,
+  ANIMATION_PRESET_META,
+  resolveAnimationPreset,
+} from './shared/shader-animation-presets';
+
 // Types — from skin type definitions
 export type {
   DesignMode,

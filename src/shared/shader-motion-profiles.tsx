@@ -78,7 +78,7 @@ export const UNIVERSAL_PHASE_MOTION: MotionProfile = {
 
 // VOID — barely alive. The orb is the only presence; the background should
 // not compete. Maximum grain at midnight because pure black has texture.
-const VOID_MOTION: MotionProfile = {
+export const VOID_MOTION: MotionProfile = {
   midnight: { distortion: 0.08, swirl: 0.01, speed: 0.04, grainOverlay: 0.28 },
   night: { distortion: 0.1, swirl: 0.02, speed: 0.05, grainOverlay: 0.22 },
   dawn: { distortion: 0.14, swirl: 0.03, speed: 0.07, grainOverlay: 0.16 },
@@ -92,7 +92,7 @@ const VOID_MOTION: MotionProfile = {
 
 // PARCHMENT — a document doesn't move. speed=0 everywhere.
 // The phase shift is expressed only through the CSS color transition.
-const PARCHMENT_MOTION: MotionProfile = {
+export const PARCHMENT_MOTION: MotionProfile = {
   midnight: { distortion: 0.0, swirl: 0.0, speed: 0.0, grainOverlay: 0.06 },
   night: { distortion: 0.0, swirl: 0.0, speed: 0.0, grainOverlay: 0.05 },
   dawn: { distortion: 0.0, swirl: 0.0, speed: 0.0, grainOverlay: 0.04 },
@@ -107,7 +107,7 @@ const PARCHMENT_MOTION: MotionProfile = {
 // SIGNAL — brutalist terminal. No organic drift. Raw grain, mechanical.
 // Distortion is very low (pixels don't flow in a terminal).
 // Grain is high — CRT texture, not smoothness.
-const SIGNAL_MOTION: MotionProfile = {
+export const SIGNAL_MOTION: MotionProfile = {
   midnight: { distortion: 0.06, swirl: 0.0, speed: 0.06, grainOverlay: 0.32 },
   night: { distortion: 0.06, swirl: 0.0, speed: 0.06, grainOverlay: 0.3 },
   dawn: { distortion: 0.08, swirl: 0.01, speed: 0.08, grainOverlay: 0.26 },
@@ -121,7 +121,7 @@ const SIGNAL_MOTION: MotionProfile = {
 
 // MERIDIAN — clean and airy. Constant gentle drift. Never dramatic.
 // Half the universal values across all phases.
-const MERIDIAN_MOTION: MotionProfile = {
+export const MERIDIAN_MOTION: MotionProfile = {
   midnight: { distortion: 0.12, swirl: 0.02, speed: 0.08, grainOverlay: 0.08 },
   night: { distortion: 0.14, swirl: 0.03, speed: 0.1, grainOverlay: 0.07 },
   dawn: { distortion: 0.24, swirl: 0.06, speed: 0.14, grainOverlay: 0.05 },
@@ -135,7 +135,7 @@ const MERIDIAN_MOTION: MotionProfile = {
 
 // SUNDIAL — ancient, measured. The gnomon shadow moves once per hour.
 // Low speed, low swirl. Stone grain.
-const SUNDIAL_MOTION: MotionProfile = {
+export const SUNDIAL_MOTION: MotionProfile = {
   midnight: { distortion: 0.18, swirl: 0.03, speed: 0.07, grainOverlay: 0.2 },
   night: { distortion: 0.2, swirl: 0.04, speed: 0.08, grainOverlay: 0.18 },
   dawn: { distortion: 0.28, swirl: 0.07, speed: 0.14, grainOverlay: 0.12 },
@@ -149,7 +149,7 @@ const SUNDIAL_MOTION: MotionProfile = {
 
 // PAPER — uncoated stock breathes. Organic, unhurried. Medium everything.
 // Never dramatic, never static. Grain increases slightly at night.
-const PAPER_MOTION: MotionProfile = {
+export const PAPER_MOTION: MotionProfile = {
   midnight: { distortion: 0.22, swirl: 0.04, speed: 0.1, grainOverlay: 0.22 },
   night: { distortion: 0.26, swirl: 0.06, speed: 0.14, grainOverlay: 0.18 },
   dawn: { distortion: 0.38, swirl: 0.1, speed: 0.22, grainOverlay: 0.12 },
@@ -163,7 +163,7 @@ const PAPER_MOTION: MotionProfile = {
 
 // FOUNDRY — the reference skin. Full universal energy arc.
 // Rich, heavy, machined. Slightly more swirl than the bare universal.
-const FOUNDRY_MOTION: MotionProfile = {
+export const FOUNDRY_MOTION: MotionProfile = {
   midnight: { distortion: 0.22, swirl: 0.04, speed: 0.1, grainOverlay: 0.16 },
   night: { distortion: 0.3, swirl: 0.07, speed: 0.16, grainOverlay: 0.13 },
   dawn: { distortion: 0.55, swirl: 0.16, speed: 0.28, grainOverlay: 0.09 },
@@ -177,7 +177,7 @@ const FOUNDRY_MOTION: MotionProfile = {
 
 // MINERAL — gemstones refract, they don't flow. Low distortion, moderate swirl
 // (internal scattering), medium speed. Grain is very low — facets are sharp.
-const MINERAL_MOTION: MotionProfile = {
+export const MINERAL_MOTION: MotionProfile = {
   midnight: { distortion: 0.14, swirl: 0.1, speed: 0.12, grainOverlay: 0.06 },
   night: { distortion: 0.16, swirl: 0.12, speed: 0.14, grainOverlay: 0.05 },
   dawn: { distortion: 0.22, swirl: 0.18, speed: 0.22, grainOverlay: 0.04 },
@@ -192,7 +192,7 @@ const MINERAL_MOTION: MotionProfile = {
 // TIDE — the sea rolls. High distortion at all phases (waves never stop).
 // Speed follows a tidal rhythm: slower at dead of night, building through dawn.
 // Grain is very low — water is clear, not grainy.
-const TIDE_MOTION: MotionProfile = {
+export const TIDE_MOTION: MotionProfile = {
   midnight: { distortion: 0.5, swirl: 0.08, speed: 0.18, grainOverlay: 0.03 },
   night: { distortion: 0.54, swirl: 0.1, speed: 0.22, grainOverlay: 0.03 },
   dawn: { distortion: 0.64, swirl: 0.16, speed: 0.34, grainOverlay: 0.02 },
@@ -207,7 +207,7 @@ const TIDE_MOTION: MotionProfile = {
 // AURORA — the most variable. At midnight/night the lights dance at full
 // intensity. During the day the aurora is invisible — calm, warm sky.
 // At dusk/sunset the bands return. Grain is very low — aurora is luminous.
-const AURORA_MOTION: MotionProfile = {
+export const AURORA_MOTION: MotionProfile = {
   midnight: { distortion: 0.8, swirl: 0.44, speed: 0.7, grainOverlay: 0.02 },
   night: { distortion: 0.86, swirl: 0.5, speed: 0.8, grainOverlay: 0.02 },
   dawn: { distortion: 0.62, swirl: 0.32, speed: 0.52, grainOverlay: 0.03 },

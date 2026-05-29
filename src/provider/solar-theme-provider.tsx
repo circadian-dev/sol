@@ -42,6 +42,11 @@ import { lerpHex } from '../lib/solar-lerp';
 import { getSessionPhaseOverride, setSessionPhaseOverride } from '../lib/solar-phase-session';
 import { getBrowserTimezone, getCentroidForTimezone } from '../lib/tz-centroids';
 import { type Season, type SeasonalBlend, useSeason } from '../lib/useSeason';
+import {
+  ANIMATION_PRESETS,
+  type MotionProfile,
+  type ShaderAnimationPreset,
+} from '../shared/shader-animation-presets';
 import { type DesignMode, SKINS, type SkinDefinition } from '../skins/index';
 import { SKIN_COPY } from '../widgets/skin-copy';
 import type { CustomPalettes } from '../widgets/solar-widget.shell';
@@ -95,6 +100,11 @@ export interface SolarTheme {
   seasonalBlend: SeasonalBlend;
   /** Override the auto-detected season, or pass null to restore auto-detection. */
   setSeasonOverride: (season: Season | null) => void;
+
+  animationPreset: ShaderAnimationPreset;
+  setAnimationPreset: (preset: ShaderAnimationPreset) => void;
+  customMotionProfile: MotionProfile | undefined;
+  setCustomMotionProfile: (profile: MotionProfile | undefined) => void;
 }
 
 // ─── Static lookups ───────────────────────────────────────────────────────────
@@ -342,6 +352,10 @@ const SolarThemeCtx = createContext<SolarTheme>({
   season: 'spring',
   seasonalBlend: { season: 'spring', nextSeason: 'spring', t: 0 },
   setSeasonOverride: noop,
+  animationPreset: 'foundry',
+  setAnimationPreset: noop,
+  customMotionProfile: undefined,
+  setCustomMotionProfile: noop,
 });
 
 export function useSolarTheme(): SolarTheme {
@@ -378,7 +392,14 @@ interface Props {
    * When true, palettes are exactly as defined in the skin. Default: false.
    */
   disableSeasonalBlend?: boolean;
+  /**
+   * Initial animation preset to use for the shader background.
+   * Persisted across reloads (localStorage); falls back to 'foundry' if unset.
+   */
+  initialAnimationPreset?: ShaderAnimationPreset;
 }
+
+const ANIMATION_STORAGE_KEY = 'solar-animation-preset';
 
 export function SolarThemeProvider({
   children,
@@ -387,6 +408,7 @@ export function SolarThemeProvider({
   isolated = false,
   seasonOverride: seasonOverrideProp,
   disableSeasonalBlend = false,
+  initialAnimationPreset,
 }: Props) {
   const geo = useCountryCodeFromGeolocation({ immediate: true });
 
@@ -409,6 +431,34 @@ export function SolarThemeProvider({
 
   // ── Custom palettes — registered by widgets so DevTools can read them ─────
   const [customPalettes, setCustomPalettes] = useState<CustomPalettes | undefined>(undefined);
+
+  // ── Animation preset state ───────────────────────────────────────────────────
+  // Decoupled from skin: any skin's color palette can be paired with any
+  // motion personality. Persisted across reloads via localStorage.
+  const [animationPreset, setAnimationPresetState] = useState<ShaderAnimationPreset>(() => {
+    if (typeof window === 'undefined' || isolated) {
+      return initialAnimationPreset ?? 'foundry';
+    }
+    try {
+      const stored = localStorage.getItem(ANIMATION_STORAGE_KEY) as ShaderAnimationPreset | null;
+      if (stored && (stored === 'custom' || stored in ANIMATION_PRESETS)) return stored;
+    } catch {}
+    return initialAnimationPreset ?? 'foundry';
+  });
+  const [customMotionProfile, setCustomMotionProfile] = useState<MotionProfile | undefined>(
+    undefined,
+  );
+  const setAnimationPreset = useCallback(
+    (preset: ShaderAnimationPreset) => {
+      setAnimationPresetState(preset);
+      if (!isolated) {
+        try {
+          localStorage.setItem(ANIMATION_STORAGE_KEY, preset);
+        } catch {}
+      }
+    },
+    [isolated],
+  );
 
   // ── Design state ─────────────────────────────────────────────────────────────
   // Always use the server-provided initialDesign for first render to avoid
@@ -609,6 +659,10 @@ export function SolarThemeProvider({
     season: seasonalBlend.season,
     seasonalBlend,
     setSeasonOverride,
+    animationPreset,
+    setAnimationPreset,
+    customMotionProfile,
+    setCustomMotionProfile,
   };
 
   if (isolated) {

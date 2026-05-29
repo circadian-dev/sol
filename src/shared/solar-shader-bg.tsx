@@ -27,6 +27,11 @@ import type {
   ShaderPalette,
   SkinDefinition,
 } from '../skins/types/widget-skin.types';
+import {
+  type MotionProfile,
+  type ShaderAnimationPreset,
+  resolveAnimationPreset,
+} from './shader-animation-presets';
 import { SKIN_MOTION_PROFILES, UNIVERSAL_PHASE_MOTION } from './shader-motion-profiles';
 
 // ─── Variant context ──────────────────────────────────────────────────────────
@@ -155,8 +160,9 @@ function computeConfig(
   skin: SkinDefinition,
   blend: SolarBlend,
   seasonal?: { blend: SeasonalBlend; disabled: boolean },
+  motionOverride?: MotionProfile,
 ) {
-  const motionProfile = resolveMotionProfile(skin);
+  const motionProfile = motionOverride ?? resolveMotionProfile(skin);
   const { phase, nextPhase, t } = blend;
   let palette = lerpPalette(skin.shaderPalettes[phase], skin.shaderPalettes[nextPhase], t);
 
@@ -445,6 +451,16 @@ export interface SolarShaderBgProps {
   blendOverride?: SolarBlend;
   opacityOverride?: number;
   variant?: ShaderVariant;
+  /**
+   * Force a specific animation preset for this background, ignoring whatever
+   * the SolarThemeProvider context has set. Useful for previews / pickers.
+   */
+  animationPresetOverride?: ShaderAnimationPreset;
+  /**
+   * When `animationPresetOverride` (or the context preset) is `'custom'`,
+   * this profile is used as the motion source. Ignored otherwise.
+   */
+  customMotionProfileOverride?: MotionProfile;
   className?: string;
   style?: React.CSSProperties;
 }
@@ -456,11 +472,19 @@ export function SolarShaderBg({
   blendOverride,
   opacityOverride,
   variant: variantProp,
+  animationPresetOverride,
+  customMotionProfileOverride,
   className,
   style,
 }: SolarShaderBgProps = {}) {
   const theme = useSolarTheme();
-  const { activeSkin, blend: contextBlend, seasonalBlend } = theme;
+  const {
+    activeSkin,
+    blend: contextBlend,
+    seasonalBlend,
+    animationPreset: contextPreset,
+    customMotionProfile: contextCustom,
+  } = theme;
   const contextVariant = useShaderVariant();
 
   const skin = skinOverride ?? activeSkin;
@@ -468,11 +492,26 @@ export function SolarShaderBg({
   const variant = variantProp ?? contextVariant;
   const seasonal = { blend: seasonalBlend, disabled: false };
 
+  const effectivePreset = animationPresetOverride ?? contextPreset;
+  const effectiveCustom = customMotionProfileOverride ?? contextCustom;
+  const resolvedMotionProfile = effectivePreset
+    ? resolveAnimationPreset(effectivePreset, effectiveCustom)
+    : undefined;
+
   // biome-ignore lint/correctness/useExhaustiveDependencies: intentional fine-grained deps — blend object reference changes every render; subscribing to specific fields avoids thrashing computeConfig
   const { palette, motion: rawMotion } = useMemo(
-    () => computeConfig(skin, blend, seasonal),
+    () => computeConfig(skin, blend, seasonal, resolvedMotionProfile),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [blend.phase, blend.nextPhase, blend.t, skin, seasonalBlend.season, seasonalBlend.t],
+    [
+      blend.phase,
+      blend.nextPhase,
+      blend.t,
+      skin,
+      seasonalBlend.season,
+      seasonalBlend.t,
+      effectivePreset,
+      effectiveCustom,
+    ],
   );
 
   const variantPalette = variant === 'editorial' ? applyEditorialPalette(palette) : palette;
@@ -596,17 +635,40 @@ export function useSolarShaderConfig(
   opts: {
     skinOverride?: SkinDefinition;
     blendOverride?: SolarBlend;
+    animationPresetOverride?: ShaderAnimationPreset;
+    customMotionProfileOverride?: MotionProfile;
   } = {},
 ) {
-  const { activeSkin, blend: contextBlend, seasonalBlend } = useSolarTheme();
+  const {
+    activeSkin,
+    blend: contextBlend,
+    seasonalBlend,
+    animationPreset: contextPreset,
+    customMotionProfile: contextCustom,
+  } = useSolarTheme();
   const skin = opts.skinOverride ?? activeSkin;
   const blend = opts.blendOverride ?? contextBlend;
   const seasonal = { blend: seasonalBlend, disabled: false };
 
+  const effectivePreset = opts.animationPresetOverride ?? contextPreset;
+  const effectiveCustom = opts.customMotionProfileOverride ?? contextCustom;
+  const resolvedMotionProfile = effectivePreset
+    ? resolveAnimationPreset(effectivePreset, effectiveCustom)
+    : undefined;
+
   // biome-ignore lint/correctness/useExhaustiveDependencies: intentional fine-grained deps — blend object reference changes every render; subscribing to specific fields avoids thrashing computeConfig
   return useMemo(
-    () => computeConfig(skin, blend, seasonal),
+    () => computeConfig(skin, blend, seasonal, resolvedMotionProfile),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [blend.phase, blend.nextPhase, blend.t, skin, seasonalBlend.season, seasonalBlend.t],
+    [
+      blend.phase,
+      blend.nextPhase,
+      blend.t,
+      skin,
+      seasonalBlend.season,
+      seasonalBlend.t,
+      effectivePreset,
+      effectiveCustom,
+    ],
   );
 }
