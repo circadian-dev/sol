@@ -105,6 +105,20 @@ export interface SolarTheme {
   setAnimationPreset: (preset: ShaderAnimationPreset) => void;
   customMotionProfile: MotionProfile | undefined;
   setCustomMotionProfile: (profile: MotionProfile | undefined) => void;
+
+  /**
+   * Fluted glass overlay — vertical-stripe prism refraction over the solar gradient.
+   * Toggleable by the user; persisted to localStorage.
+   */
+  flutedGlass: boolean;
+  setFlutedGlass: (enabled: boolean) => void;
+
+  /**
+   * Pebbled glass overlay — Voronoi/cellular omnidirectional scatter over the solar gradient.
+   * Toggleable by the user; persisted to localStorage.
+   */
+  pebbledGlass: boolean;
+  setPebbledGlass: (enabled: boolean) => void;
 }
 
 // ─── Static lookups ───────────────────────────────────────────────────────────
@@ -320,6 +334,15 @@ function writeCssVars(
 
 const DESIGN_STORAGE_KEY = 'solar-widget-design';
 
+// ─── Glass effect persistence ─────────────────────────────────────────────────
+
+const FLUTED_GLASS_STORAGE_KEY = 'solar-fluted-glass';
+const PEBBLED_GLASS_STORAGE_KEY = 'solar-pebbled-glass';
+
+// ─── Animation preset persistence ────────────────────────────────────────────
+
+const ANIMATION_STORAGE_KEY = 'solar-animation-preset';
+
 // ─── Context default ──────────────────────────────────────────────────────────
 
 const noop = () => {};
@@ -356,6 +379,10 @@ const SolarThemeCtx = createContext<SolarTheme>({
   setAnimationPreset: noop,
   customMotionProfile: undefined,
   setCustomMotionProfile: noop,
+  flutedGlass: false,
+  setFlutedGlass: noop,
+  pebbledGlass: false,
+  setPebbledGlass: noop,
 });
 
 export function useSolarTheme(): SolarTheme {
@@ -397,9 +424,17 @@ interface Props {
    * Persisted across reloads (localStorage); falls back to 'foundry' if unset.
    */
   initialAnimationPreset?: ShaderAnimationPreset;
+  /**
+   * Initial state for the fluted glass overlay.
+   * Persisted across reloads (localStorage); falls back to false if unset.
+   */
+  initialFlutedGlass?: boolean;
+  /**
+   * Initial state for the pebbled glass overlay.
+   * Persisted across reloads (localStorage); falls back to false if unset.
+   */
+  initialPebbledGlass?: boolean;
 }
-
-const ANIMATION_STORAGE_KEY = 'solar-animation-preset';
 
 export function SolarThemeProvider({
   children,
@@ -409,6 +444,8 @@ export function SolarThemeProvider({
   seasonOverride: seasonOverrideProp,
   disableSeasonalBlend = false,
   initialAnimationPreset,
+  initialFlutedGlass,
+  initialPebbledGlass,
 }: Props) {
   const geo = useCountryCodeFromGeolocation({ immediate: true });
 
@@ -433,8 +470,6 @@ export function SolarThemeProvider({
   const [customPalettes, setCustomPalettes] = useState<CustomPalettes | undefined>(undefined);
 
   // ── Animation preset state ───────────────────────────────────────────────────
-  // Decoupled from skin: any skin's color palette can be paired with any
-  // motion personality. Persisted across reloads via localStorage.
   const [animationPreset, setAnimationPresetState] = useState<ShaderAnimationPreset>(() => {
     if (typeof window === 'undefined' || isolated) {
       return initialAnimationPreset ?? 'foundry';
@@ -460,10 +495,49 @@ export function SolarThemeProvider({
     [isolated],
   );
 
+  // ── Fluted glass state ────────────────────────────────────────────────────
+  const [flutedGlass, setFlutedGlassState] = useState<boolean>(() => {
+    if (typeof window === 'undefined' || isolated) return initialFlutedGlass ?? false;
+    try {
+      const stored = localStorage.getItem(FLUTED_GLASS_STORAGE_KEY);
+      if (stored !== null) return stored === 'true';
+    } catch {}
+    return initialFlutedGlass ?? false;
+  });
+  const setFlutedGlass = useCallback(
+    (enabled: boolean) => {
+      setFlutedGlassState(enabled);
+      if (!isolated) {
+        try {
+          localStorage.setItem(FLUTED_GLASS_STORAGE_KEY, String(enabled));
+        } catch {}
+      }
+    },
+    [isolated],
+  );
+
+  // ── Pebbled glass state ───────────────────────────────────────────────────
+  const [pebbledGlass, setPebbledGlassState] = useState<boolean>(() => {
+    if (typeof window === 'undefined' || isolated) return initialPebbledGlass ?? false;
+    try {
+      const stored = localStorage.getItem(PEBBLED_GLASS_STORAGE_KEY);
+      if (stored !== null) return stored === 'true';
+    } catch {}
+    return initialPebbledGlass ?? false;
+  });
+  const setPebbledGlass = useCallback(
+    (enabled: boolean) => {
+      setPebbledGlassState(enabled);
+      if (!isolated) {
+        try {
+          localStorage.setItem(PEBBLED_GLASS_STORAGE_KEY, String(enabled));
+        } catch {}
+      }
+    },
+    [isolated],
+  );
+
   // ── Design state ─────────────────────────────────────────────────────────────
-  // Always use the server-provided initialDesign for first render to avoid
-  // hydration mismatches. The init script + localStorage may have a different
-  // skin; we reconcile after mount via useEffect below.
   const [design, setDesignState] = useState<DesignMode>(initialDesign);
 
   // ── Post-mount: persist the initial design to DOM + localStorage ────────
@@ -478,9 +552,6 @@ export function SolarThemeProvider({
   }, []);
 
   // ── Phase override — seeded from sessionStorage/localStorage on mount ─────
-  // KEY FIX: We no longer call isPageReload() to clear the override.
-  // getSessionPhaseOverride() now handles the localStorage fallback itself,
-  // Isolated instances (test page) skip session persistence entirely.
   const [overridePhase, setOverridePhaseState] = useState<SolarPhase | null>(() => {
     if (typeof window === 'undefined') return null;
     if (isolated) return null;
@@ -562,7 +633,6 @@ export function SolarThemeProvider({
     }
 
     // Precise reverse geocode — refines "Copenhagen" → "Horsens", etc.
-    // Fires only when real geolocation resolves, not on centroid.
     const controller = new AbortController();
     fetchReverseGeocode(lat, lon, controller.signal).then((name) => {
       if (name) setCity(name);
@@ -581,9 +651,6 @@ export function SolarThemeProvider({
   }, [coordsReady, geo.permission, geo.error]);
 
   // ── Solar position ────────────────────────────────────────────────────────────
-  // `initialPhase` is forwarded so the hook seeds its initial state with the
-  // correct phase instead of the hardcoded 'morning' default — preventing a
-  // one-frame palette flash on first render before useLayoutEffect runs.
   const solar = useSolarPosition({
     latitude,
     longitude,
@@ -592,9 +659,6 @@ export function SolarThemeProvider({
     initialPhase,
   });
 
-  // Single gate: use computed solar only when we have real coords and no override.
-  // Until then, prefer the init-script's DOM attribute, fall back to the
-  // `initialPhase` prop, then finally 'morning'.
   const activePhase: SolarPhase =
     overridePhase ?? (solar.isReady ? solar.phase : resolveInitialPhase(initialPhase));
   const activeBlend: SolarBlend = overridePhase
@@ -663,6 +727,10 @@ export function SolarThemeProvider({
     setAnimationPreset,
     customMotionProfile,
     setCustomMotionProfile,
+    flutedGlass,
+    setFlutedGlass,
+    pebbledGlass,
+    setPebbledGlass,
   };
 
   if (isolated) {

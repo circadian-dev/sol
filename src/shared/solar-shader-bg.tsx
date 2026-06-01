@@ -194,9 +194,6 @@ function hexToRgb(hex: string): [number, number, number] {
 }
 
 // ─── WebGL SolarFlare shader ──────────────────────────────────────────────────
-// Inspired by a radiant solar flare effect. Uses the skin's 4 shader palette
-// colors as a blended flare color against the colorBack background.
-// Motion profile drives speed, intensity, spread and pulse.
 
 const VS_SOURCE = `#version 300 es
   in vec2 a_position;
@@ -237,16 +234,12 @@ const FS_SOURCE = `#version 300 es
 
     // Normalize to a fixed luminance so the flare shape is identical
     // across all skins regardless of how bright/dark the palette is.
-    // Dark palettes (Void midnight ≈ 0.01) and bright palettes
-    // (Paper morning ≈ 0.95) both produce the same-sized sun.
     float lum = dot(avgColor, vec3(0.299, 0.587, 0.114));
     vec3 flareColor = lum > 0.001
-      ? avgColor * (0.30 / lum)   // rescale to target luminance 0.30
-      : vec3(0.30);               // neutral grey fallback
+      ? avgColor * (0.30 / lum)
+      : vec3(0.30);
 
-    // Solar flare radiance — matches the reference SolarFlare shader.
-    // length(p) creates a circular distance field from center.
-    // The exp(mod(dot(...))) creates alive, pulsing texture inside the sun.
+    // Solar flare radiance
     float l = u_intensity - length(p);
 
     o = tanh(
@@ -310,9 +303,6 @@ function SolarFlareCanvas({
     };
   }, [backgroundColor, colors, speed, intensity, spread, pulseRate, grain]);
 
-  // useLayoutEffect ensures WebGL context is created and the first frame is
-  // drawn *before* the browser paints, preventing a blank-canvas flash on
-  // client-side navigation remounts.
   useLayoutEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -438,10 +428,412 @@ function SolarFlareCanvas({
   );
 }
 
+// ─── Fluted Glass shader ──────────────────────────────────────────────────────
+// Vertical-stripe prism refraction. Reads the solar gradient palette directly —
+// no shared framebuffer needed. Parameters mirror @paper-design/shaders-react
+// FlutedGlass props for familiarity: size, distortion, shadows, highlights, angle.
+
+const FG_VS = `#version 300 es
+  in vec2 a_position;
+  void main() { gl_Position = vec4(a_position, 0.0, 1.0); }
+`;
+
+const FG_FS = `#version 300 es
+precision highp float;
+
+uniform vec2  r;
+uniform vec3  u_bg;
+uniform vec3  u_c0, u_c1, u_c2, u_c3;
+uniform float u_size;        // stripe width  (0–1)
+uniform float u_distortion;  // refraction power
+uniform float u_shadows;     // shadow intensity at stripe edges
+uniform float u_highlights;  // highlight intensity at stripe centres
+uniform float u_angle;       // stripe angle in radians
+
+out vec4 o;
+
+// Reconstruct the solar gradient from palette colors.
+// Mirrors the luminance-normalisation in SolarFlareCanvas so the
+// fluted texture always reads cleanly regardless of skin brightness.
+vec3 sampleGradient(vec2 uv) {
+  float d   = length(uv - vec2(0.5));
+  vec3  mid = u_c0 * 0.4 + u_c1 * 0.3 + u_c2 * 0.2 + u_c3 * 0.1;
+  float lum = dot(mid, vec3(0.299, 0.587, 0.114));
+  mid = lum > 0.001 ? mid * (0.28 / lum) : vec3(0.28);
+  return mix(mid + u_bg * 0.6, u_bg, smoothstep(0.1, 0.95, d * 1.7));
+}
+
+void main() {
+  vec2 uv = gl_FragCoord.xy / r;
+  uv.y = 1.0 - uv.y;
+
+  // Rotate for angled stripes
+  vec2  p  = uv - 0.5;
+  float ca = cos(u_angle), sa = sin(u_angle);
+  float sc = p.x * ca + p.y * sa;   // position along stripe axis
+  vec2  perp = vec2(-sa, ca);        // perpendicular displacement direction
+
+  // Stripe position and fractional offset within stripe (–0.5 → 0.5)
+  float density = 1.0 / max(0.004, u_size * 0.10);
+  float sf      = fract(sc * density) - 0.5;
+
+  // Prism: displace sample UV along the perpendicular axis
+  vec2 sUV = clamp(uv + perp * sf * u_distortion * 0.35, 0.0, 1.0);
+  vec3 col  = sampleGradient(sUV);
+
+  // Shadow at stripe edges
+  float edge = abs(sf) * 2.0;
+  col *= 1.0 - pow(edge, 2.5) * u_shadows * 0.65;
+
+  // Highlight at stripe centre
+  float hl = pow(max(0.0, 1.0 - edge * 6.0), 3.0) * u_highlights;
+  col += hl * 0.35;
+
+  o = vec4(clamp(col, 0.0, 1.0), 1.0);
+}
+`;
+
+interface FlutedGlassCanvasProps {
+  colors: [string, string, string, string];
+  backgroundColor: string;
+  size: number;
+  distortion: number;
+  shadows: number;
+  highlights: number;
+  angle: number; // degrees
+}
+
+function FlutedGlassCanvas({
+  colors,
+  backgroundColor,
+  size,
+  distortion,
+  shadows,
+  highlights,
+  angle,
+}: FlutedGlassCanvasProps) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const animRef = useRef<number | null>(null);
+  const cfgRef = useRef({ colors, backgroundColor, size, distortion, shadows, highlights, angle });
+
+  useEffect(() => {
+    cfgRef.current = { colors, backgroundColor, size, distortion, shadows, highlights, angle };
+  }, [colors, backgroundColor, size, distortion, shadows, highlights, angle]);
+
+  useLayoutEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const gl = canvas.getContext('webgl2');
+    if (!gl) return;
+
+    const mkShader = (type: number, src: string) => {
+      const s = gl.createShader(type);
+      if (!s) return null;
+      gl.shaderSource(s, src);
+      gl.compileShader(s);
+      return gl.getShaderParameter(s, gl.COMPILE_STATUS) ? s : null;
+    };
+    const vs = mkShader(gl.VERTEX_SHADER, FG_VS);
+    const fs = mkShader(gl.FRAGMENT_SHADER, FG_FS);
+    if (!vs || !fs) return;
+
+    const prog = gl.createProgram();
+    if (!prog) return;
+    gl.attachShader(prog, vs);
+    gl.attachShader(prog, fs);
+    gl.linkProgram(prog);
+    if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) return;
+
+    const buf = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+    gl.bufferData(
+      gl.ARRAY_BUFFER,
+      new Float32Array([-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1]),
+      gl.STATIC_DRAW,
+    );
+
+    const posLoc = gl.getAttribLocation(prog, 'a_position');
+    gl.enableVertexAttribArray(posLoc);
+    gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 0, 0);
+
+    const loc = {
+      r: gl.getUniformLocation(prog, 'r'),
+      bg: gl.getUniformLocation(prog, 'u_bg'),
+      c0: gl.getUniformLocation(prog, 'u_c0'),
+      c1: gl.getUniformLocation(prog, 'u_c1'),
+      c2: gl.getUniformLocation(prog, 'u_c2'),
+      c3: gl.getUniformLocation(prog, 'u_c3'),
+      size: gl.getUniformLocation(prog, 'u_size'),
+      distortion: gl.getUniformLocation(prog, 'u_distortion'),
+      shadows: gl.getUniformLocation(prog, 'u_shadows'),
+      highlights: gl.getUniformLocation(prog, 'u_highlights'),
+      angle: gl.getUniformLocation(prog, 'u_angle'),
+    };
+
+    const resize = () => {
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = Math.round(canvas.offsetWidth * dpr);
+      canvas.height = Math.round(canvas.offsetHeight * dpr);
+      gl.viewport(0, 0, canvas.width, canvas.height);
+    };
+    window.addEventListener('resize', resize);
+    resize();
+
+    const draw = () => {
+      const c = cfgRef.current;
+      gl.useProgram(prog);
+      gl.uniform2f(loc.r, canvas.width, canvas.height);
+
+      const bg = hexToRgb(c.backgroundColor);
+      gl.uniform3f(loc.bg, bg[0], bg[1], bg[2]);
+
+      const [r0, g0, b0] = hexToRgb(c.colors[0]);
+      const [r1, g1, b1] = hexToRgb(c.colors[1]);
+      const [r2, g2, b2] = hexToRgb(c.colors[2]);
+      const [r3, g3, b3] = hexToRgb(c.colors[3]);
+      gl.uniform3f(loc.c0, r0, g0, b0);
+      gl.uniform3f(loc.c1, r1, g1, b1);
+      gl.uniform3f(loc.c2, r2, g2, b2);
+      gl.uniform3f(loc.c3, r3, g3, b3);
+
+      gl.uniform1f(loc.size, c.size);
+      gl.uniform1f(loc.distortion, c.distortion);
+      gl.uniform1f(loc.shadows, c.shadows);
+      gl.uniform1f(loc.highlights, c.highlights);
+      gl.uniform1f(loc.angle, c.angle * (Math.PI / 180));
+
+      gl.drawArrays(gl.TRIANGLES, 0, 6);
+      animRef.current = requestAnimationFrame(draw);
+    };
+    draw();
+
+    return () => {
+      window.removeEventListener('resize', resize);
+      if (animRef.current) cancelAnimationFrame(animRef.current);
+      gl.deleteProgram(prog);
+      gl.deleteBuffer(buf);
+    };
+  }, []);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}
+    />
+  );
+}
+
+// ─── Pebbled Glass shader ─────────────────────────────────────────────────────
+// Voronoi/cellular omnidirectional scatter. Each cell displaces the sample UV
+// toward its centre, creating the organic hammered-glass look.
+// No angle param — isotropic by definition.
+
+const PG_VS = `#version 300 es
+  in vec2 a_position;
+  void main() { gl_Position = vec4(a_position, 0.0, 1.0); }
+`;
+
+const PG_FS = `#version 300 es
+precision highp float;
+
+uniform vec2  r;
+uniform vec3  u_bg;
+uniform vec3  u_c0, u_c1, u_c2, u_c3;
+uniform float u_size;        // cell density (0–1)
+uniform float u_distortion;  // displacement strength
+uniform float u_highlights;  // cell-edge specular brightness
+
+out vec4 o;
+
+// ── Helpers ────────────────────────────────────────────────────────────────
+
+vec2 hash2(vec2 p) {
+  p = vec2(dot(p, vec2(127.1, 311.7)), dot(p, vec2(269.5, 183.3)));
+  return fract(sin(p) * 43758.5453);
+}
+
+// Voronoi returning (displacement-toward-nearest-centre, distance-to-nearest-centre).
+// Static — no time uniform — so the cell pattern is stable (no animation).
+vec3 voronoi(vec2 p) {
+  vec2 i = floor(p);
+  vec2 f = fract(p);
+
+  float minDist = 8.0;
+  vec2  minDisp = vec2(0.0);
+
+  for (int y = -2; y <= 2; y++) {
+    for (int x = -2; x <= 2; x++) {
+      vec2 neighbor = vec2(float(x), float(y));
+      vec2 point    = hash2(i + neighbor);   // jittered cell centre
+      vec2 diff     = neighbor + point - f;
+      float dist    = length(diff);
+      if (dist < minDist) {
+        minDist = dist;
+        minDisp = diff;
+      }
+    }
+  }
+  return vec3(minDisp, minDist);
+}
+
+// Reconstructs solar gradient — identical normalisation to SolarFlareCanvas.
+vec3 sampleGradient(vec2 uv) {
+  float d   = length(uv - vec2(0.5));
+  vec3  mid = u_c0 * 0.4 + u_c1 * 0.3 + u_c2 * 0.2 + u_c3 * 0.1;
+  float lum = dot(mid, vec3(0.299, 0.587, 0.114));
+  mid = lum > 0.001 ? mid * (0.28 / lum) : vec3(0.28);
+  return mix(mid + u_bg * 0.6, u_bg, smoothstep(0.1, 0.95, d * 1.7));
+}
+
+void main() {
+  vec2 uv = gl_FragCoord.xy / r;
+  uv.y = 1.0 - uv.y;
+
+  float density = max(1.0, u_size * 80.0);
+  vec3  vCell   = voronoi(uv * density);
+
+  vec2  disp = vCell.xy;
+  float dist = vCell.z;
+
+  // Displace sample UV toward cell centre — omnidirectional
+  vec2 sUV = clamp(uv + disp / density * u_distortion * 0.4, 0.0, 1.0);
+  vec3 col  = sampleGradient(sUV);
+
+  // Specular highlight at cell boundaries
+  float edgeGlow = pow(smoothstep(0.3, 0.6, dist), 3.0) * u_highlights;
+  col += edgeGlow * 0.3;
+
+  // Soft interior shadow pocket
+  float interior = pow(max(0.0, 1.0 - dist * 2.2), 2.0) * 0.15;
+  col *= 1.0 - interior;
+
+  o = vec4(clamp(col, 0.0, 1.0), 1.0);
+}
+`;
+
+interface PebbledGlassCanvasProps {
+  colors: [string, string, string, string];
+  backgroundColor: string;
+  size: number;
+  distortion: number;
+  highlights: number;
+}
+
+function PebbledGlassCanvas({
+  colors,
+  backgroundColor,
+  size,
+  distortion,
+  highlights,
+}: PebbledGlassCanvasProps) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const animRef = useRef<number | null>(null);
+  const cfgRef = useRef({ colors, backgroundColor, size, distortion, highlights });
+
+  useEffect(() => {
+    cfgRef.current = { colors, backgroundColor, size, distortion, highlights };
+  }, [colors, backgroundColor, size, distortion, highlights]);
+
+  useLayoutEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const gl = canvas.getContext('webgl2');
+    if (!gl) return;
+
+    const mkShader = (type: number, src: string) => {
+      const s = gl.createShader(type);
+      if (!s) return null;
+      gl.shaderSource(s, src);
+      gl.compileShader(s);
+      return gl.getShaderParameter(s, gl.COMPILE_STATUS) ? s : null;
+    };
+    const vs = mkShader(gl.VERTEX_SHADER, PG_VS);
+    const fs = mkShader(gl.FRAGMENT_SHADER, PG_FS);
+    if (!vs || !fs) return;
+
+    const prog = gl.createProgram();
+    if (!prog) return;
+    gl.attachShader(prog, vs);
+    gl.attachShader(prog, fs);
+    gl.linkProgram(prog);
+    if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) return;
+
+    const buf = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+    gl.bufferData(
+      gl.ARRAY_BUFFER,
+      new Float32Array([-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1]),
+      gl.STATIC_DRAW,
+    );
+
+    const posLoc = gl.getAttribLocation(prog, 'a_position');
+    gl.enableVertexAttribArray(posLoc);
+    gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 0, 0);
+
+    const loc = {
+      r: gl.getUniformLocation(prog, 'r'),
+      bg: gl.getUniformLocation(prog, 'u_bg'),
+      c0: gl.getUniformLocation(prog, 'u_c0'),
+      c1: gl.getUniformLocation(prog, 'u_c1'),
+      c2: gl.getUniformLocation(prog, 'u_c2'),
+      c3: gl.getUniformLocation(prog, 'u_c3'),
+      size: gl.getUniformLocation(prog, 'u_size'),
+      distortion: gl.getUniformLocation(prog, 'u_distortion'),
+      highlights: gl.getUniformLocation(prog, 'u_highlights'),
+    };
+
+    const resize = () => {
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = Math.round(canvas.offsetWidth * dpr);
+      canvas.height = Math.round(canvas.offsetHeight * dpr);
+      gl.viewport(0, 0, canvas.width, canvas.height);
+    };
+    window.addEventListener('resize', resize);
+    resize();
+
+    const draw = () => {
+      const c = cfgRef.current;
+      gl.useProgram(prog);
+      gl.uniform2f(loc.r, canvas.width, canvas.height);
+
+      const bg = hexToRgb(c.backgroundColor);
+      gl.uniform3f(loc.bg, bg[0], bg[1], bg[2]);
+
+      const [r0, g0, b0] = hexToRgb(c.colors[0]);
+      const [r1, g1, b1] = hexToRgb(c.colors[1]);
+      const [r2, g2, b2] = hexToRgb(c.colors[2]);
+      const [r3, g3, b3] = hexToRgb(c.colors[3]);
+      gl.uniform3f(loc.c0, r0, g0, b0);
+      gl.uniform3f(loc.c1, r1, g1, b1);
+      gl.uniform3f(loc.c2, r2, g2, b2);
+      gl.uniform3f(loc.c3, r3, g3, b3);
+
+      gl.uniform1f(loc.size, c.size);
+      gl.uniform1f(loc.distortion, c.distortion);
+      gl.uniform1f(loc.highlights, c.highlights);
+
+      gl.drawArrays(gl.TRIANGLES, 0, 6);
+      animRef.current = requestAnimationFrame(draw);
+    };
+    draw();
+
+    return () => {
+      window.removeEventListener('resize', resize);
+      if (animRef.current) cancelAnimationFrame(animRef.current);
+      gl.deleteProgram(prog);
+      gl.deleteBuffer(buf);
+    };
+  }, []);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}
+    />
+  );
+}
+
 // ─── Client-side mount tracking ───────────────────────────────────────────────
-// After the very first hydration, any subsequent mount is a client-side navigation
-// remount — no SSR/hydration mismatch is possible, so the canvas can render
-// immediately without the `mounted` gate (which would cause a one-frame blink).
 let _hasHydrated = false;
 
 // ─── Props ────────────────────────────────────────────────────────────────────
@@ -463,6 +855,30 @@ export interface SolarShaderBgProps {
   customMotionProfileOverride?: MotionProfile;
   className?: string;
   style?: React.CSSProperties;
+
+  // ── Fluted glass overrides ──────────────────────────────────────────────
+  /** Force fluted glass on/off for this instance, ignoring context. */
+  flutedGlassOverride?: boolean;
+  /** Stripe width. 0–1, default 0.5. */
+  flutedGlassSize?: number;
+  /** Refraction power. 0–1, default 0.5. */
+  flutedGlassDistortion?: number;
+  /** Shadow intensity at stripe edges. 0–1, default 0.25. */
+  flutedGlassShadows?: number;
+  /** Highlight intensity at stripe centres. 0–1, default 0.15. */
+  flutedGlassHighlights?: number;
+  /** Stripe angle in degrees. 0 = vertical, default 0. */
+  flutedGlassAngle?: number;
+
+  // ── Pebbled glass overrides ─────────────────────────────────────────────
+  /** Force pebbled glass on/off for this instance, ignoring context. */
+  pebbledGlassOverride?: boolean;
+  /** Cell density. 0–1, default 0.5. */
+  pebbledGlassSize?: number;
+  /** Displacement strength. 0–1, default 0.4. */
+  pebbledGlassDistortion?: number;
+  /** Cell-edge specular brightness. 0–1, default 0.6. */
+  pebbledGlassHighlights?: number;
 }
 
 // ─── SolarShaderBg ────────────────────────────────────────────────────────────
@@ -476,6 +892,16 @@ export function SolarShaderBg({
   customMotionProfileOverride,
   className,
   style,
+  flutedGlassOverride,
+  flutedGlassSize,
+  flutedGlassDistortion,
+  flutedGlassShadows,
+  flutedGlassHighlights,
+  flutedGlassAngle,
+  pebbledGlassOverride,
+  pebbledGlassSize,
+  pebbledGlassDistortion,
+  pebbledGlassHighlights,
 }: SolarShaderBgProps = {}) {
   const theme = useSolarTheme();
   const {
@@ -484,6 +910,8 @@ export function SolarShaderBg({
     seasonalBlend,
     animationPreset: contextPreset,
     customMotionProfile: contextCustom,
+    flutedGlass: contextFluted,
+    pebbledGlass: contextPebbled,
   } = theme;
   const contextVariant = useShaderVariant();
 
@@ -498,7 +926,7 @@ export function SolarShaderBg({
     ? resolveAnimationPreset(effectivePreset, effectiveCustom)
     : undefined;
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: intentional fine-grained deps — blend object reference changes every render; subscribing to specific fields avoids thrashing computeConfig
+  // biome-ignore lint/correctness/useExhaustiveDependencies: intentional fine-grained deps
   const { palette, motion: rawMotion } = useMemo(
     () => computeConfig(skin, blend, seasonal, resolvedMotionProfile),
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -533,10 +961,9 @@ export function SolarShaderBg({
 
   const imageConfig = resolveImage(skin, variantPalette);
 
-  // Gate dynamic layers behind a client-only flag to avoid hydration mismatches.
-  // On the very first mount (SSR hydration), start as false and flip via effect.
-  // On subsequent mounts (client-side navigation), start as true immediately
-  // so the WebGL canvas renders without a one-frame blink.
+  const showFluted = flutedGlassOverride ?? contextFluted;
+  const showPebbled = pebbledGlassOverride ?? contextPebbled;
+
   const [mounted, setMounted] = useState(_hasHydrated);
   useLayoutEffect(() => {
     _hasHydrated = true;
@@ -551,9 +978,6 @@ export function SolarShaderBg({
   }, [variantPalette.colorBack]);
 
   // Map shader motion → SolarFlare parameters
-  // intensity ≥ 3.5 ensures the radial edge is always off-screen (max corner
-  // distance in normalised coords is ~1.15), so the glow fills the entire
-  // viewport as an atmospheric wash — no visible "sun" circle.
   const flareSpeed = 0.6 + shaderMotion.speed * 0.8;
   const flareIntensity = 3.5 + shaderMotion.distortion * 0.5;
   const flareSpread = 8.0 + shaderMotion.swirl * 8.0;
@@ -574,7 +998,7 @@ export function SolarShaderBg({
     >
       {mounted && (
         <>
-          {/* ── Layer 1: WebGL SolarFlare (renders instantly — no flash) ── */}
+          {/* ── Layer 1: WebGL SolarFlare ──────────────────────────────── */}
           <div className="absolute inset-0" style={{ opacity: resolvedOpacity }}>
             <SolarFlareCanvas
               backgroundColor={variantPalette.colorBack}
@@ -587,7 +1011,7 @@ export function SolarShaderBg({
             />
           </div>
 
-          {/* ── Layer 2: Atmospheric image ──────────────────────────────── */}
+          {/* ── Layer 2: Atmospheric image ─────────────────────────────── */}
           {imageConfig && (
             <div
               className="absolute inset-0"
@@ -608,7 +1032,7 @@ export function SolarShaderBg({
             />
           )}
 
-          {/* ── Layer 3: Vignette ───────────────────────────────────────── */}
+          {/* ── Layer 3: Vignette ──────────────────────────────────────── */}
           <div
             className="absolute inset-0"
             aria-hidden
@@ -617,6 +1041,34 @@ export function SolarShaderBg({
               background: `radial-gradient(ellipse 85% 70% at 50% 50%, transparent 0%, ${variantPalette.vignette} 100%)`,
             }}
           />
+
+          {/* ── Layer 4: Fluted glass (opt-in) ─────────────────────────── */}
+          {showFluted && (
+            <div className="absolute inset-0" aria-hidden style={{ pointerEvents: 'none' }}>
+              <FlutedGlassCanvas
+                colors={variantPalette.colors}
+                backgroundColor={variantPalette.colorBack}
+                size={flutedGlassSize ?? 0.5}
+                distortion={flutedGlassDistortion ?? 0.5}
+                shadows={flutedGlassShadows ?? 0.25}
+                highlights={flutedGlassHighlights ?? 0.15}
+                angle={flutedGlassAngle ?? 0}
+              />
+            </div>
+          )}
+
+          {/* ── Layer 5: Pebbled glass (opt-in) ────────────────────────── */}
+          {showPebbled && (
+            <div className="absolute inset-0" aria-hidden style={{ pointerEvents: 'none' }}>
+              <PebbledGlassCanvas
+                colors={variantPalette.colors}
+                backgroundColor={variantPalette.colorBack}
+                size={pebbledGlassSize ?? 0.5}
+                distortion={pebbledGlassDistortion ?? 0.4}
+                highlights={pebbledGlassHighlights ?? 0.6}
+              />
+            </div>
+          )}
         </>
       )}
     </div>
@@ -656,7 +1108,7 @@ export function useSolarShaderConfig(
     ? resolveAnimationPreset(effectivePreset, effectiveCustom)
     : undefined;
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: intentional fine-grained deps — blend object reference changes every render; subscribing to specific fields avoids thrashing computeConfig
+  // biome-ignore lint/correctness/useExhaustiveDependencies: intentional fine-grained deps
   return useMemo(
     () => computeConfig(skin, blend, seasonal, resolvedMotionProfile),
     // eslint-disable-next-line react-hooks/exhaustive-deps
