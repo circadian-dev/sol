@@ -442,60 +442,43 @@ const FG_FS = `#version 300 es
 precision highp float;
 
 uniform vec2  r;
-uniform vec3  u_bg;
-uniform vec3  u_c0, u_c1, u_c2, u_c3;
-uniform float u_size;        // stripe width  (0–1)
-uniform float u_distortion;  // refraction power
-uniform float u_shadows;     // shadow intensity at stripe edges
-uniform float u_highlights;  // highlight intensity at stripe centres
-uniform float u_angle;       // stripe angle in radians
+uniform float u_size;
+uniform float u_distortion;
+uniform float u_shadows;
+uniform float u_highlights;
+uniform float u_angle;
 
 out vec4 o;
-
-// Reconstruct the solar gradient from palette colors.
-// Mirrors the luminance-normalisation in SolarFlareCanvas so the
-// fluted texture always reads cleanly regardless of skin brightness.
-vec3 sampleGradient(vec2 uv) {
-  float d   = length(uv - vec2(0.5));
-  vec3  mid = u_c0 * 0.4 + u_c1 * 0.3 + u_c2 * 0.2 + u_c3 * 0.1;
-  float lum = dot(mid, vec3(0.299, 0.587, 0.114));
-  mid = lum > 0.001 ? mid * (0.28 / lum) : vec3(0.28);
-  return mix(mid + u_bg * 0.6, u_bg, smoothstep(0.1, 0.95, d * 1.7));
-}
 
 void main() {
   vec2 uv = gl_FragCoord.xy / r;
   uv.y = 1.0 - uv.y;
 
-  // Rotate for angled stripes
   vec2  p  = uv - 0.5;
   float ca = cos(u_angle), sa = sin(u_angle);
-  float sc = p.x * ca + p.y * sa;   // position along stripe axis
-  vec2  perp = vec2(-sa, ca);        // perpendicular displacement direction
+  float sc = p.x * ca + p.y * sa;
+  vec2  perp = vec2(-sa, ca);
 
-  // Stripe position and fractional offset within stripe (–0.5 → 0.5)
   float density = 1.0 / max(0.004, u_size * 0.10);
   float sf      = fract(sc * density) - 0.5;
 
-  // Prism: displace sample UV along the perpendicular axis
-  vec2 sUV = clamp(uv + perp * sf * u_distortion * 0.35, 0.0, 1.0);
-  vec3 col  = sampleGradient(sUV);
-
-  // Shadow at stripe edges
+  // Stripe edge: 0 at centre, 1 at edge
   float edge = abs(sf) * 2.0;
-  col *= 1.0 - pow(edge, 2.5) * u_shadows * 0.65;
 
-  // Highlight at stripe centre
-  float hl = pow(max(0.0, 1.0 - edge * 6.0), 3.0) * u_highlights;
-  col += hl * 0.35;
+  // Shadow: pulls below 0.5 at stripe edges
+  float shadow = pow(edge, 2.0) * u_shadows * 0.45;
 
-  o = vec4(clamp(col, 0.0, 1.0), 1.0);
+  // Highlight: pushes above 0.5 at stripe centre
+  float hl = pow(max(0.0, 1.0 - edge * 5.0), 2.5) * u_highlights * 0.55;
+
+  // 0.5 = neutral overlay. <0.5 darkens, >0.5 lightens.
+  float val = clamp(0.5 - shadow + hl, 0.0, 1.0);
+
+  o = vec4(vec3(val), 1.0);
 }
 `;
 
 interface FlutedGlassCanvasProps {
-  colors: [string, string, string, string];
-  backgroundColor: string;
   size: number;
   distortion: number;
   shadows: number;
@@ -504,8 +487,6 @@ interface FlutedGlassCanvasProps {
 }
 
 function FlutedGlassCanvas({
-  colors,
-  backgroundColor,
   size,
   distortion,
   shadows,
@@ -514,11 +495,11 @@ function FlutedGlassCanvas({
 }: FlutedGlassCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animRef = useRef<number | null>(null);
-  const cfgRef = useRef({ colors, backgroundColor, size, distortion, shadows, highlights, angle });
+  const cfgRef = useRef({ size, distortion, shadows, highlights, angle });
 
   useEffect(() => {
-    cfgRef.current = { colors, backgroundColor, size, distortion, shadows, highlights, angle };
-  }, [colors, backgroundColor, size, distortion, shadows, highlights, angle]);
+    cfgRef.current = { size, distortion, shadows, highlights, angle };
+  }, [size, distortion, shadows, highlights, angle]);
 
   useLayoutEffect(() => {
     const canvas = canvasRef.current;
@@ -558,11 +539,6 @@ function FlutedGlassCanvas({
 
     const loc = {
       r: gl.getUniformLocation(prog, 'r'),
-      bg: gl.getUniformLocation(prog, 'u_bg'),
-      c0: gl.getUniformLocation(prog, 'u_c0'),
-      c1: gl.getUniformLocation(prog, 'u_c1'),
-      c2: gl.getUniformLocation(prog, 'u_c2'),
-      c3: gl.getUniformLocation(prog, 'u_c3'),
       size: gl.getUniformLocation(prog, 'u_size'),
       distortion: gl.getUniformLocation(prog, 'u_distortion'),
       shadows: gl.getUniformLocation(prog, 'u_shadows'),
@@ -583,18 +559,6 @@ function FlutedGlassCanvas({
       const c = cfgRef.current;
       gl.useProgram(prog);
       gl.uniform2f(loc.r, canvas.width, canvas.height);
-
-      const bg = hexToRgb(c.backgroundColor);
-      gl.uniform3f(loc.bg, bg[0], bg[1], bg[2]);
-
-      const [r0, g0, b0] = hexToRgb(c.colors[0]);
-      const [r1, g1, b1] = hexToRgb(c.colors[1]);
-      const [r2, g2, b2] = hexToRgb(c.colors[2]);
-      const [r3, g3, b3] = hexToRgb(c.colors[3]);
-      gl.uniform3f(loc.c0, r0, g0, b0);
-      gl.uniform3f(loc.c1, r1, g1, b1);
-      gl.uniform3f(loc.c2, r2, g2, b2);
-      gl.uniform3f(loc.c3, r3, g3, b3);
 
       gl.uniform1f(loc.size, c.size);
       gl.uniform1f(loc.distortion, c.distortion);
@@ -637,52 +601,32 @@ const PG_FS = `#version 300 es
 precision highp float;
 
 uniform vec2  r;
-uniform vec3  u_bg;
-uniform vec3  u_c0, u_c1, u_c2, u_c3;
-uniform float u_size;        // cell density (0–1)
-uniform float u_distortion;  // displacement strength
-uniform float u_highlights;  // cell-edge specular brightness
+uniform float u_size;
+uniform float u_distortion;
+uniform float u_highlights;
 
 out vec4 o;
-
-// ── Helpers ────────────────────────────────────────────────────────────────
 
 vec2 hash2(vec2 p) {
   p = vec2(dot(p, vec2(127.1, 311.7)), dot(p, vec2(269.5, 183.3)));
   return fract(sin(p) * 43758.5453);
 }
 
-// Voronoi returning (displacement-toward-nearest-centre, distance-to-nearest-centre).
-// Static — no time uniform — so the cell pattern is stable (no animation).
 vec3 voronoi(vec2 p) {
   vec2 i = floor(p);
   vec2 f = fract(p);
-
   float minDist = 8.0;
   vec2  minDisp = vec2(0.0);
-
   for (int y = -2; y <= 2; y++) {
     for (int x = -2; x <= 2; x++) {
       vec2 neighbor = vec2(float(x), float(y));
-      vec2 point    = hash2(i + neighbor);   // jittered cell centre
+      vec2 point    = hash2(i + neighbor);
       vec2 diff     = neighbor + point - f;
       float dist    = length(diff);
-      if (dist < minDist) {
-        minDist = dist;
-        minDisp = diff;
-      }
+      if (dist < minDist) { minDist = dist; minDisp = diff; }
     }
   }
   return vec3(minDisp, minDist);
-}
-
-// Reconstructs solar gradient — identical normalisation to SolarFlareCanvas.
-vec3 sampleGradient(vec2 uv) {
-  float d   = length(uv - vec2(0.5));
-  vec3  mid = u_c0 * 0.4 + u_c1 * 0.3 + u_c2 * 0.2 + u_c3 * 0.1;
-  float lum = dot(mid, vec3(0.299, 0.587, 0.114));
-  mid = lum > 0.001 ? mid * (0.28 / lum) : vec3(0.28);
-  return mix(mid + u_bg * 0.6, u_bg, smoothstep(0.1, 0.95, d * 1.7));
 }
 
 void main() {
@@ -691,48 +635,34 @@ void main() {
 
   float density = max(1.0, u_size * 80.0);
   vec3  vCell   = voronoi(uv * density);
+  float dist    = vCell.z;
 
-  vec2  disp = vCell.xy;
-  float dist = vCell.z;
+  // Specular at cell boundaries — pushes above 0.5
+  float edgeGlow = pow(smoothstep(0.28, 0.55, dist), 2.5) * u_highlights * 0.55;
 
-  // Displace sample UV toward cell centre — omnidirectional
-  vec2 sUV = clamp(uv + disp / density * u_distortion * 0.4, 0.0, 1.0);
-  vec3 col  = sampleGradient(sUV);
+  // Interior shadow pocket — pulls below 0.5
+  float interior = pow(max(0.0, 1.0 - dist * 2.0), 2.0) * u_distortion * 0.35;
 
-  // Specular highlight at cell boundaries
-  float edgeGlow = pow(smoothstep(0.3, 0.6, dist), 3.0) * u_highlights;
-  col += edgeGlow * 0.3;
+  float val = clamp(0.5 + edgeGlow - interior, 0.0, 1.0);
 
-  // Soft interior shadow pocket
-  float interior = pow(max(0.0, 1.0 - dist * 2.2), 2.0) * 0.15;
-  col *= 1.0 - interior;
-
-  o = vec4(clamp(col, 0.0, 1.0), 1.0);
+  o = vec4(vec3(val), 1.0);
 }
 `;
 
 interface PebbledGlassCanvasProps {
-  colors: [string, string, string, string];
-  backgroundColor: string;
   size: number;
   distortion: number;
   highlights: number;
 }
 
-function PebbledGlassCanvas({
-  colors,
-  backgroundColor,
-  size,
-  distortion,
-  highlights,
-}: PebbledGlassCanvasProps) {
+function PebbledGlassCanvas({ size, distortion, highlights }: PebbledGlassCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animRef = useRef<number | null>(null);
-  const cfgRef = useRef({ colors, backgroundColor, size, distortion, highlights });
+  const cfgRef = useRef({ size, distortion, highlights });
 
   useEffect(() => {
-    cfgRef.current = { colors, backgroundColor, size, distortion, highlights };
-  }, [colors, backgroundColor, size, distortion, highlights]);
+    cfgRef.current = { size, distortion, highlights };
+  }, [size, distortion, highlights]);
 
   useLayoutEffect(() => {
     const canvas = canvasRef.current;
@@ -772,11 +702,6 @@ function PebbledGlassCanvas({
 
     const loc = {
       r: gl.getUniformLocation(prog, 'r'),
-      bg: gl.getUniformLocation(prog, 'u_bg'),
-      c0: gl.getUniformLocation(prog, 'u_c0'),
-      c1: gl.getUniformLocation(prog, 'u_c1'),
-      c2: gl.getUniformLocation(prog, 'u_c2'),
-      c3: gl.getUniformLocation(prog, 'u_c3'),
       size: gl.getUniformLocation(prog, 'u_size'),
       distortion: gl.getUniformLocation(prog, 'u_distortion'),
       highlights: gl.getUniformLocation(prog, 'u_highlights'),
@@ -795,18 +720,6 @@ function PebbledGlassCanvas({
       const c = cfgRef.current;
       gl.useProgram(prog);
       gl.uniform2f(loc.r, canvas.width, canvas.height);
-
-      const bg = hexToRgb(c.backgroundColor);
-      gl.uniform3f(loc.bg, bg[0], bg[1], bg[2]);
-
-      const [r0, g0, b0] = hexToRgb(c.colors[0]);
-      const [r1, g1, b1] = hexToRgb(c.colors[1]);
-      const [r2, g2, b2] = hexToRgb(c.colors[2]);
-      const [r3, g3, b3] = hexToRgb(c.colors[3]);
-      gl.uniform3f(loc.c0, r0, g0, b0);
-      gl.uniform3f(loc.c1, r1, g1, b1);
-      gl.uniform3f(loc.c2, r2, g2, b2);
-      gl.uniform3f(loc.c3, r3, g3, b3);
 
       gl.uniform1f(loc.size, c.size);
       gl.uniform1f(loc.distortion, c.distortion);
@@ -1044,14 +957,16 @@ export function SolarShaderBg({
 
           {/* ── Layer 4: Fluted glass (opt-in) ─────────────────────────── */}
           {showFluted && (
-            <div className="absolute inset-0" aria-hidden style={{ pointerEvents: 'none' }}>
+            <div
+              className="absolute inset-0"
+              aria-hidden
+              style={{ pointerEvents: 'none', mixBlendMode: 'overlay' }}
+            >
               <FlutedGlassCanvas
-                colors={variantPalette.colors}
-                backgroundColor={variantPalette.colorBack}
                 size={flutedGlassSize ?? 0.5}
                 distortion={flutedGlassDistortion ?? 0.5}
-                shadows={flutedGlassShadows ?? 0.25}
-                highlights={flutedGlassHighlights ?? 0.15}
+                shadows={flutedGlassShadows ?? 0.6}
+                highlights={flutedGlassHighlights ?? 0.5}
                 angle={flutedGlassAngle ?? 0}
               />
             </div>
@@ -1059,13 +974,15 @@ export function SolarShaderBg({
 
           {/* ── Layer 5: Pebbled glass (opt-in) ────────────────────────── */}
           {showPebbled && (
-            <div className="absolute inset-0" aria-hidden style={{ pointerEvents: 'none' }}>
+            <div
+              className="absolute inset-0"
+              aria-hidden
+              style={{ pointerEvents: 'none', mixBlendMode: 'overlay' }}
+            >
               <PebbledGlassCanvas
-                colors={variantPalette.colors}
-                backgroundColor={variantPalette.colorBack}
                 size={pebbledGlassSize ?? 0.5}
-                distortion={pebbledGlassDistortion ?? 0.4}
-                highlights={pebbledGlassHighlights ?? 0.6}
+                distortion={pebbledGlassDistortion ?? 0.5}
+                highlights={pebbledGlassHighlights ?? 0.7}
               />
             </div>
           )}
