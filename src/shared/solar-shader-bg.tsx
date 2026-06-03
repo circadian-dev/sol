@@ -1,6 +1,6 @@
 'use client';
 // ════════════════════════════════════════════════════════════════════════════
-// FILE: components/solar-shader-bg.client.tsx
+// FILE: sol/src/components/solar-shader-bg.client.tsx
 // ════════════════════════════════════════════════════════════════════════════
 
 import {

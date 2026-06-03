@@ -1,4 +1,4 @@
-/**
+/** sol/src/lib/inject-widget-css.ts
  * Injects the minimal CSS utility classes that sol widget skins rely on.
  *
  * Host apps that already include Tailwind will have these classes, but when

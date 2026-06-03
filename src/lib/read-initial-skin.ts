@@ -1,4 +1,4 @@
-// lib/read-initial-skin.ts
+// sol/src/lib/read-initial-skin.ts
 
 import type { DesignMode } from '../skins';
 

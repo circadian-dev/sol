@@ -1,4 +1,4 @@
-// lib/solar-phase-init.ts
+// sol/src/lib/solar-phase-init.ts
 
 import type { SolarPhase } from '../hooks/useSolarPosition';
 import type { DesignMode, SkinDefinition } from '../skins/types/widget-skin.types';

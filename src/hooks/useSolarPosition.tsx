@@ -1,5 +1,5 @@
 /**
- * useSolarPosition.ts
+ * sol/src/hooks/useSolarPosition.ts
  *
  * Computes real solar position (altitude, azimuth, sunrise, solar noon, sunset)
  * from geographic coordinates + current time. No external deps required.

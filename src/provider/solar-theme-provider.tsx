@@ -1,6 +1,6 @@
 'use client';
 
-// provider/solar-theme-provider.tsx
+// sol/src/provider/solar-theme-provider.tsx
 // pages to lose the phase override on reload, snapping to a wrong clock phase.
 // Phase override now persists through reloads via localStorage (sol-last-phase).
 // Explicit "Go Live" in the showcase calls setOverridePhase(null) to clear both.
@@ -28,6 +28,7 @@ import {
   type SolarBlend,
   type SolarPhase,
   type SolarPosition,
+  type UseSolarPositionReturn, 
   useSolarPosition,
 } from '../hooks/useSolarPosition';
 import { useCountryCodeFromGeolocation } from '../lib/geolocation';
@@ -59,7 +60,9 @@ export interface SolarTheme {
   brightness: number;
   mode: 'light' | 'dim' | 'dark';
   accentColor: string;
-  solarPosition: SolarPosition | null;
+  // ← was SolarPosition | null — changed to UseSolarPositionReturn so
+  //   consumers can access .isReady and .blend without a type error.
+  solarPosition: UseSolarPositionReturn | null;
   timezone: string | null;
   latitude: number | null;
   longitude: number | null;
@@ -704,7 +707,7 @@ export function SolarThemeProvider({
     brightness: BRIGHTNESS[activePhase],
     mode: palette.mode,
     accentColor: phaseVars.accent,
-    solarPosition: solar,
+    solarPosition: solar, // solar is UseSolarPositionReturn — matches the updated interface type
     timezone,
     latitude,
     longitude,

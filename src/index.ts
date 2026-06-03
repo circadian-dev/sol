@@ -1,3 +1,4 @@
+//sol/src/index.ts
 // Provider
 export { SolarThemeProvider } from './provider/solar-theme-provider';
 export { useSolarTheme } from './provider/solar-theme-provider';
@@ -28,7 +29,12 @@ export type {
 } from './skins/types/widget-skin.types';
 
 // Types — from hooks
-export type { SolarPhase, SolarBlend } from './hooks/useSolarPosition';
+export type {
+  SolarPhase,
+  SolarBlend,
+  SolarPosition,
+  UseSolarPositionReturn,
+} from './hooks/useSolarPosition';
 
 // Types — from widgets
 export type { WeatherCategory, ExpandDirection, WidgetSize } from './widgets/solar-widget.shell';
