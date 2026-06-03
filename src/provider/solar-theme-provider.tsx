@@ -28,7 +28,7 @@ import {
   type SolarBlend,
   type SolarPhase,
   type SolarPosition,
-  type UseSolarPositionReturn, 
+  type UseSolarPositionReturn,
   useSolarPosition,
 } from '../hooks/useSolarPosition';
 import { useCountryCodeFromGeolocation } from '../lib/geolocation';
