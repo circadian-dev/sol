@@ -2,10 +2,7 @@ import { defineConfig } from 'tsdown';
 
 export default defineConfig({
   entry: [
-    // Public main entry — SolarThemeProvider, useSolarTheme, SolarWidget, CompactWidget, types
     './src/index.ts',
-
-    // Devtools subpath — tree-shaken out of production bundles unless explicitly imported
     './src/devtools/index.ts',
   ],
   format: 'esm',
@@ -14,14 +11,9 @@ export default defineConfig({
   dts: { resolve: true },
   external: ['react', 'react/jsx-runtime', 'react-dom', 'react-dom/client'],
   noExternal: [/.*/],
-
   treeshake: true,
   define: {
-    // Some dependencies still reference `global` — alias it to globalThis for
-    // compatibility with Deno, Bun, and edge runtimes.
     global: 'globalThis',
   },
-  // Ensures Node.js built-ins are imported with the `node:` prefix for
-  // compatibility with Deno and other non-Node runtimes.
   nodeProtocol: true,
 });
