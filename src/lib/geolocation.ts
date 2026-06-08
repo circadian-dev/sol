@@ -13,6 +13,43 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import tzlookup from 'tz-lookup';
 import { normalizeCountryCode } from './country';
 
+// ─── Last-known-position cache ────────────────────────────────────────────────
+// Persists the most recent precise position to localStorage so that on the next
+// page load the provider can hydrate the city/coords instantly instead of waiting
+// for the browser geolocation permission prompt + GPS fix to resolve.
+
+const GEO_CACHE_KEY = 'sol:geo-cache';
+
+export interface GeoCacheEntry {
+  latitude: number;
+  longitude: number;
+  city: string | null;
+  countryCode: string | null;
+  ts: number;
+}
+
+export function readGeoCacheEntry(): GeoCacheEntry | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = localStorage.getItem(GEO_CACHE_KEY);
+    if (!raw) return null;
+    const entry = JSON.parse(raw) as GeoCacheEntry;
+    // Accept stale entries — even a day-old position is a better instant
+    // fallback than the timezone-centroid city.
+    if (typeof entry.latitude !== 'number' || typeof entry.longitude !== 'number') return null;
+    return entry;
+  } catch {
+    return null;
+  }
+}
+
+export function writeGeoCacheEntry(entry: Omit<GeoCacheEntry, 'ts'>): void {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(GEO_CACHE_KEY, JSON.stringify({ ...entry, ts: Date.now() }));
+  } catch {}
+}
+
 export function coordinatesToCountryCode(latitude: number, longitude: number): string | null {
   try {
     const tz = tzlookup(latitude, longitude);
@@ -30,6 +67,13 @@ export interface UseCountryCodeFromGeolocationOptions {
   timeout?: number;
   /** Request geolocation immediately on mount (prompts user for permission) */
   immediate?: boolean;
+  /**
+   * Continuously watch position for live updates. When true the browser keeps
+   * the geolocation source active and reports new positions as the device moves
+   * — essential for the travel use case where the user changes cities without
+   * reloading the page.
+   */
+  watch?: boolean;
 }
 
 export interface UseCountryCodeFromGeolocationReturn {
@@ -63,10 +107,11 @@ export function useCountryCodeFromGeolocation(
   const geolocationOptions: UseGeolocationOptions = useMemo(
     () => ({
       enableHighAccuracy: options.enableHighAccuracy ?? false,
-      maximumAge: options.maximumAge ?? 5 * 60 * 1000,
+      // Accept a 30s-old cached fix so the first position resolves fast.
+      maximumAge: options.maximumAge ?? 30_000,
       timeout: options.timeout ?? 5_000,
       immediate: false,
-      watch: false,
+      watch: options.watch ?? false,
       onSuccess: (pos) => {
         const nextCountry = coordinatesToCountryCode(pos.coords.latitude, pos.coords.longitude);
         if (nextCountry) {
@@ -78,6 +123,14 @@ export function useCountryCodeFromGeolocation(
           clearPending();
         }
       },
+      // In watch mode the position streams in via onPositionChange; mirror the
+      // country-code resolution so live moves update the country too.
+      onPositionChange: (pos) => {
+        const nextCountry = coordinatesToCountryCode(pos.coords.latitude, pos.coords.longitude);
+        if (nextCountry) {
+          setCountryCode(nextCountry);
+        }
+      },
       onError: () => {
         if (pendingResolveRef.current) {
           pendingResolveRef.current(null);
@@ -85,7 +138,7 @@ export function useCountryCodeFromGeolocation(
         }
       },
     }),
-    [clearPending, options.enableHighAccuracy, options.maximumAge, options.timeout],
+    [clearPending, options.enableHighAccuracy, options.maximumAge, options.timeout, options.watch],
   );
 
   const { position, loading, error, permission, isSupported, getCurrentPosition } =
