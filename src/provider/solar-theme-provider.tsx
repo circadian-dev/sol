@@ -31,7 +31,11 @@ import {
   type UseSolarPositionReturn,
   useSolarPosition,
 } from '../hooks/useSolarPosition';
-import { useCountryCodeFromGeolocation } from '../lib/geolocation';
+import {
+  readGeoCacheEntry,
+  useCountryCodeFromGeolocation,
+  writeGeoCacheEntry,
+} from '../lib/geolocation';
 import { injectWidgetCSS } from '../lib/inject-widget-css';
 import { cityFromTimezone, fetchReverseGeocode } from '../lib/reverse-geocode';
 import {
@@ -450,7 +454,16 @@ export function SolarThemeProvider({
   initialFlutedGlass,
   initialPebbledGlass,
 }: Props) {
-  const geo = useCountryCodeFromGeolocation({ immediate: true });
+  const geo = useCountryCodeFromGeolocation({
+    immediate: true,
+    watch: true,
+    // Force GPS instead of network/Wi-Fi/IP positioning. Without this the
+    // browser defaults to coarse positioning that can land tens of km away
+    // (e.g. on a regional ISP hub), making the nearest-city lookup resolve to
+    // the wrong town. GPS gives ±5–20 m, which correctly resolves small
+    // localities.
+    enableHighAccuracy: true,
+  });
 
   // Stable scope ID — only meaningful when isolated=true.
   const scopeIdRef = useRef<string | undefined>(isolated ? nextScopeId() : undefined);
@@ -570,6 +583,8 @@ export function SolarThemeProvider({
   useLayoutEffect(() => {
     const browserTZ = getBrowserTimezone();
     setTimezone(browserTZ);
+
+    // Phase 1 — instant city from the timezone string (e.g. "Copenhagen").
     setCity(cityFromTimezone(browserTZ));
     const coords = fallbackCoordsFromTZ(browserTZ);
     if (coords) {
@@ -577,7 +592,21 @@ export function SolarThemeProvider({
       setLongitude(coords[1]);
       setCoordsReady(true);
     }
-  }, []);
+
+    // Phase 2 — override synchronously with the last known precise location from
+    // localStorage so the FIRST render already shows the real city (e.g.
+    // "Herning") instead of the timezone-centroid city, with no reload needed.
+    // A fresh geolocation fix (watch:true) still refines this moments later.
+    if (!isolated) {
+      const cached = readGeoCacheEntry();
+      if (cached) {
+        setLatitude(cached.latitude);
+        setLongitude(cached.longitude);
+        setCoordsReady(true);
+        if (cached.city) setCity(cached.city);
+      }
+    }
+  }, [isolated]);
 
   // ── Design setter ────────────────────────────────────────────────────────────
   const setDesign = useCallback(
@@ -639,9 +668,19 @@ export function SolarThemeProvider({
     const controller = new AbortController();
     fetchReverseGeocode(lat, lon, controller.signal).then((name) => {
       if (name) setCity(name);
+      // Cache the precise position so the next page load hydrates this city
+      // instantly instead of falling back to the timezone-centroid city.
+      if (!isolated) {
+        writeGeoCacheEntry({
+          latitude: lat,
+          longitude: lon,
+          city: name ?? null,
+          countryCode: geo.countryCode ?? null,
+        });
+      }
     });
     return () => controller.abort();
-  }, [geo.position]);
+  }, [geo.position, geo.countryCode, isolated]);
 
   useEffect(() => {
     if (coordsReady) return;
