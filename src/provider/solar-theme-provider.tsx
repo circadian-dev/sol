@@ -245,6 +245,18 @@ function fallbackCoordsFromTZ(tz: string): [number, number] | null {
   return centroid ? [centroid.lat, centroid.lon] : null;
 }
 
+/** Approximate distance in metres between two lat/lng points (equirectangular —
+ *  accurate enough at the small distances we care about). */
+function metersBetween(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const dLat = (lat2 - lat1) * 111_000;
+  const dLon = (lon2 - lon1) * 111_000 * Math.cos((lat1 * Math.PI) / 180);
+  return Math.sqrt(dLat * dLat + dLon * dLon);
+}
+
+/** Minimum movement before we bother hitting the reverse-geocode API again.
+ *  Prevents API spam + city flicker while `watch` streams near-identical fixes. */
+const GEOCODE_MOVE_THRESHOLD_M = 250;
+
 // ─── CSS var writer ───────────────────────────────────────────────────────────
 
 function hexToRgb(hex: string): [number, number, number] | null {
@@ -472,6 +484,12 @@ export function SolarThemeProvider({
   // Ref to the wrapper div — resolved after first paint in isolated mode.
   const wrapperRef = useRef<HTMLDivElement | null>(null);
 
+  // Tracks the last timezone we applied a coarse city for, and the last position
+  // we reverse-geocoded. Both gate work in the watch:true geolocation effect so
+  // streaming fixes don't re-flash the coarse city or spam the geocode API.
+  const lastTzRef = useRef<string | null>(null);
+  const lastGeocodeRef = useRef<{ lat: number; lon: number } | null>(null);
+
   // ── Coords state ────────────────────────────────────────────────────────────
   const [latitude, setLatitude] = useState<number | null>(null);
   const [longitude, setLongitude] = useState<number | null>(null);
@@ -583,6 +601,7 @@ export function SolarThemeProvider({
   useLayoutEffect(() => {
     const browserTZ = getBrowserTimezone();
     setTimezone(browserTZ);
+    lastTzRef.current = browserTZ;
 
     // Phase 1 — instant city from the timezone string (e.g. "Copenhagen").
     setCity(cityFromTimezone(browserTZ));
@@ -653,7 +672,17 @@ export function SolarThemeProvider({
   useEffect(() => {
     if (!geo.position?.coords) return;
 
-    const { latitude: lat, longitude: lon } = geo.position.coords;
+    const { latitude: lat, longitude: lon, accuracy } = geo.position.coords;
+
+    // TEMP debug — confirm whether the fix is GPS-precise (small accuracy) or
+    // coarse network positioning (large accuracy). Remove once verified.
+    console.log('[sol:geo] fix', {
+      latitude: lat,
+      longitude: lon,
+      accuracyMeters: accuracy,
+      source: accuracy <= 100 ? 'GPS (precise)' : 'network/IP (coarse)',
+    });
+
     setLatitude(lat);
     setLongitude(lon);
     setCoordsReady(true);
@@ -661,12 +690,30 @@ export function SolarThemeProvider({
     const tz = coordsToTimezone(lat, lon);
     if (tz) {
       setTimezone(tz);
-      setCity(cityFromTimezone(tz));
+      // Only fall back to the coarse timezone-city when the timezone actually
+      // changes (e.g. the user travels to a new region). Re-applying it on
+      // every watch fix would overwrite the precise reverse-geocoded city and
+      // cause the Copenhagen↔Herning flicker.
+      if (tz !== lastTzRef.current) {
+        setCity(cityFromTimezone(tz));
+        lastTzRef.current = tz;
+      }
     }
+
+    // Skip the reverse-geocode if we haven't meaningfully moved since the last
+    // lookup — watch streams near-identical fixes every few seconds, and
+    // re-fetching each time both flickers the city and burns the API quota.
+    const last = lastGeocodeRef.current;
+    if (last && metersBetween(lat, lon, last.lat, last.lon) < GEOCODE_MOVE_THRESHOLD_M) {
+      return;
+    }
+    lastGeocodeRef.current = { lat, lon };
 
     // Precise reverse geocode — refines "Copenhagen" → "Horsens", etc.
     const controller = new AbortController();
     fetchReverseGeocode(lat, lon, controller.signal).then((name) => {
+      // TEMP debug — see what the reverse geocoder resolved the coords to.
+      console.log('[sol:geo] reverse-geocode →', name);
       if (name) setCity(name);
       // Cache the precise position so the next page load hydrates this city
       // instantly instead of falling back to the timezone-centroid city.
