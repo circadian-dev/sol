@@ -6,18 +6,38 @@
  * Resolves a precise city/locality name from coordinates, used to refine the
  * instant timezone-centroid city once browser geolocation becomes available.
  *
- * Provider: BigDataCloud free reverse-geocode-client endpoint.
+ * Primary provider: OpenStreetMap Nominatim.
  *   - No API key required
- *   - Free tier: 10k requests/month (ample for a widget library)
- *   - Covers localities, suburbs, and small towns globally
- *   - GDPR-compliant, no personal data stored
- *   - Docs: https://www.bigdatacloud.com/geocoding-apis/free-reverse-geocode-to-city-api
+ *   - Village/hamlet-level data (resolves e.g. "Haderup", pop. ~500),
+ *     where BigDataCloud only returns the municipality seat ("Herning")
+ *   - CORS-enabled for browser use; identifies via Referer/User-Agent
+ *   - Usage policy: max ~1 req/s. The provider gates calls behind a 250 m
+ *     movement threshold, so per-user request volume stays tiny.
+ *   - Docs: https://nominatim.org/release-docs/develop/api/Reverse/
  *
- * Resolution priority (most → least specific):
- *   locality            "Horsens"           (neighbourhood / district / town)
- *   city                "Aarhus"            (nearest major city)
- *   principalSubdivision "Central Denmark Region"  (state / region fallback)
+ * Fallback provider: BigDataCloud free reverse-geocode-client endpoint.
+ *   - Used only when Nominatim errors / is unavailable.
+ *   - Coarser (municipality-level) but very reliable + high free quota.
+ *   - Docs: https://www.bigdatacloud.com/geocoding-apis/free-reverse-geocode-to-city-api
  */
+
+const NOMINATIM_ENDPOINT = 'https://nominatim.openstreetmap.org/reverse';
+const BDC_ENDPOINT = 'https://api.bigdatacloud.net/data/reverse-geocode-client';
+
+interface NominatimAddress {
+  hamlet?: string;
+  village?: string;
+  town?: string;
+  city?: string;
+  suburb?: string;
+  municipality?: string;
+  county?: string;
+  state?: string;
+}
+
+interface NominatimResponse {
+  address?: NominatimAddress;
+}
 
 interface BDCResponse {
   locality: string;
@@ -27,11 +47,53 @@ interface BDCResponse {
   countryCode: string;
 }
 
-const BDC_ENDPOINT = 'https://api.bigdatacloud.net/data/reverse-geocode-client';
+/** Pick the most specific recognizable place name from a Nominatim address.
+ *  Order: village/hamlet → town → city → suburb → municipality → county → state. */
+function nameFromNominatim(addr: NominatimAddress): string | null {
+  return (
+    addr.village?.trim() ||
+    addr.hamlet?.trim() ||
+    addr.town?.trim() ||
+    addr.city?.trim() ||
+    addr.suburb?.trim() ||
+    addr.municipality?.trim() ||
+    addr.county?.trim() ||
+    addr.state?.trim() ||
+    null
+  );
+}
+
+async function fetchFromNominatim(
+  lat: number,
+  lng: number,
+  signal?: AbortSignal,
+): Promise<string | null> {
+  // zoom=14 ≈ village/suburb granularity — specific enough for small localities
+  // without descending to street level.
+  const url = `${NOMINATIM_ENDPOINT}?lat=${lat}&lon=${lng}&format=json&zoom=14&accept-language=en`;
+  const res = await fetch(url, signal ? { signal } : undefined);
+  if (!res.ok) return null;
+  const data: NominatimResponse = await res.json();
+  return data.address ? nameFromNominatim(data.address) : null;
+}
+
+async function fetchFromBigDataCloud(
+  lat: number,
+  lng: number,
+  signal?: AbortSignal,
+): Promise<string | null> {
+  const url = `${BDC_ENDPOINT}?latitude=${lat}&longitude=${lng}&localityLanguage=en`;
+  const res = await fetch(url, signal ? { signal } : undefined);
+  if (!res.ok) return null;
+  const data: BDCResponse = await res.json();
+  return data.locality?.trim() || data.city?.trim() || data.principalSubdivision?.trim() || null;
+}
 
 /**
  * Fetches the nearest locality/city name for the given coordinates.
- * Returns null on any error so callers can fall back gracefully.
+ *
+ * Tries Nominatim first (village-level accuracy) and falls back to BigDataCloud
+ * if it errors. Returns null on total failure so callers fall back gracefully.
  *
  * @param lat       Latitude (precise — from browser geolocation, not centroid)
  * @param lng       Longitude
@@ -43,14 +105,15 @@ export async function fetchReverseGeocode(
   signal?: AbortSignal,
 ): Promise<string | null> {
   try {
-    const url = `${BDC_ENDPOINT}?latitude=${lat}&longitude=${lng}&localityLanguage=en`;
-    const res = await fetch(url, signal ? { signal } : undefined);
-    if (!res.ok) return null;
+    const name = await fetchFromNominatim(lat, lng, signal);
+    if (name) return name;
+  } catch (err) {
+    // Don't fall through on an intentional abort — the caller cancelled.
+    if (err instanceof DOMException && err.name === 'AbortError') return null;
+  }
 
-    const data: BDCResponse = await res.json();
-
-    // Return the most specific non-empty name available
-    return data.locality?.trim() || data.city?.trim() || data.principalSubdivision?.trim() || null;
+  try {
+    return await fetchFromBigDataCloud(lat, lng, signal);
   } catch {
     // Covers AbortError, network failure, parse error
     return null;

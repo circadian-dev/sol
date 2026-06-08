@@ -680,7 +680,8 @@ export function SolarThemeProvider({
       latitude: lat,
       longitude: lon,
       accuracyMeters: accuracy,
-      source: accuracy <= 100 ? 'GPS (precise)' : 'network/IP (coarse)',
+      source:
+        accuracy <= 50 ? 'GPS (precise)' : accuracy <= 1000 ? 'Wi-Fi (good)' : 'IP/cell (coarse)',
     });
 
     setLatitude(lat);
