@@ -453,6 +453,13 @@ interface Props {
    * Persisted across reloads (localStorage); falls back to false if unset.
    */
   initialPebbledGlass?: boolean;
+  /**
+   * Custom reverse geocoder. When provided, called instead of the built-in
+   * BigDataCloud lookup to resolve a precise city/locality from coordinates.
+   * Use this to inject a village-accurate geocoder (e.g. Nominatim) in your own
+   * app while keeping sol dependency-free by default.
+   */
+  reverseGeocoder?: (lat: number, lng: number, signal?: AbortSignal) => Promise<string | null>;
 }
 
 export function SolarThemeProvider({
@@ -465,6 +472,7 @@ export function SolarThemeProvider({
   initialAnimationPreset,
   initialFlutedGlass,
   initialPebbledGlass,
+  reverseGeocoder,
 }: Props) {
   const geo = useCountryCodeFromGeolocation({
     immediate: true,
@@ -622,7 +630,9 @@ export function SolarThemeProvider({
         setLatitude(cached.latitude);
         setLongitude(cached.longitude);
         setCoordsReady(true);
-        if (cached.city) setCity(cached.city);
+        if (cached.city) {
+          setCity(cached.city);
+        }
       }
     }
   }, [isolated]);
@@ -672,17 +682,7 @@ export function SolarThemeProvider({
   useEffect(() => {
     if (!geo.position?.coords) return;
 
-    const { latitude: lat, longitude: lon, accuracy } = geo.position.coords;
-
-    // TEMP debug — confirm whether the fix is GPS-precise (small accuracy) or
-    // coarse network positioning (large accuracy). Remove once verified.
-    console.log('[sol:geo] fix', {
-      latitude: lat,
-      longitude: lon,
-      accuracyMeters: accuracy,
-      source:
-        accuracy <= 50 ? 'GPS (precise)' : accuracy <= 1000 ? 'Wi-Fi (good)' : 'IP/cell (coarse)',
-    });
+    const { latitude: lat, longitude: lon } = geo.position.coords;
 
     setLatitude(lat);
     setLongitude(lon);
@@ -712,9 +712,8 @@ export function SolarThemeProvider({
 
     // Precise reverse geocode — refines "Copenhagen" → "Horsens", etc.
     const controller = new AbortController();
-    fetchReverseGeocode(lat, lon, controller.signal).then((name) => {
-      // TEMP debug — see what the reverse geocoder resolved the coords to.
-      console.log('[sol:geo] reverse-geocode →', name);
+    const geocode = reverseGeocoder ?? fetchReverseGeocode;
+    geocode(lat, lon, controller.signal).then((name) => {
       if (name) setCity(name);
       // Cache the precise position so the next page load hydrates this city
       // instantly instead of falling back to the timezone-centroid city.
@@ -728,7 +727,7 @@ export function SolarThemeProvider({
       }
     });
     return () => controller.abort();
-  }, [geo.position, geo.countryCode, isolated]);
+  }, [geo.position, geo.countryCode, isolated, reverseGeocoder]);
 
   useEffect(() => {
     if (coordsReady) return;

@@ -372,6 +372,7 @@ export default define.page(function Home() {
 | `children` | `ReactNode` | — | Required |
 | `initialDesign` | `DesignMode` | `'foundry'` | Starting skin |
 | `isolated` | `boolean` | `false` | Scope CSS vars to wrapper div instead of `:root`. Useful when mounting multiple providers on a single page. |
+| `reverseGeocoder` | `(lat, lng, signal?) => Promise<string \| null>` | — | Custom reverse geocoder. When provided, called instead of the built-in BigDataCloud lookup. Use this to inject a village-accurate geocoder (e.g. Nominatim) in your own app while keeping `sol` dependency-free by default. |
 
 ### Location is automatic
 
@@ -709,6 +710,7 @@ function DebugPanel() {
 | `latitude` | `number \| null` | Resolved latitude |
 | `longitude` | `number \| null` | Resolved longitude |
 | `coordsReady` | `boolean` | Whether coordinates have resolved |
+| `city` | `string \| null` | Nearest city or locality name. Resolved from timezone instantly, then refined by geolocation. |
 | `design` | `DesignMode` | Active skin name |
 | `activeSkin` | `SkinDefinition` | Full skin definition object |
 | `setOverridePhase` | `(phase \| null) => void` | Set/clear phase override |

@@ -8,8 +8,8 @@
  *
  * Primary provider: OpenStreetMap Nominatim.
  *   - No API key required
- *   - Village/hamlet-level data (resolves e.g. "Haderup", pop. ~500),
- *     where BigDataCloud only returns the municipality seat ("Herning")
+ *   - Village/hamlet-level data (resolves e.g. "Smaller Cities", pop. ~500),
+ *     where BigDataCloud only returns the municipality seat ("Larger Cities")
  *   - CORS-enabled for browser use; identifies via Referer/User-Agent
  *   - Usage policy: max ~1 req/s. The provider gates calls behind a 250 m
  *     movement threshold, so per-user request volume stays tiny.
@@ -23,6 +23,18 @@
 
 const NOMINATIM_ENDPOINT = 'https://nominatim.openstreetmap.org/reverse';
 const BDC_ENDPOINT = 'https://api.bigdatacloud.net/data/reverse-geocode-client';
+
+/** Attribution required by OpenStreetMap's ODbL license when displaying any
+ *  place name resolved via Nominatim. Consumers must show this near the city. */
+export const OSM_ATTRIBUTION = '© OpenStreetMap contributors';
+
+export interface ReverseGeocodeResult {
+  /** Resolved locality/city name, or null if nothing could be resolved. */
+  name: string | null;
+  /** Required attribution string for the source of `name`, or null when the
+   *  source imposes no display requirement (BigDataCloud) or there is no name. */
+  attribution: string | null;
+}
 
 interface NominatimAddress {
   hamlet?: string;
@@ -63,7 +75,7 @@ function nameFromNominatim(addr: NominatimAddress): string | null {
   );
 }
 
-async function fetchFromNominatim(
+export async function fetchFromNominatim(
   lat: number,
   lng: number,
   signal?: AbortSignal,
@@ -90,10 +102,12 @@ async function fetchFromBigDataCloud(
 }
 
 /**
- * Fetches the nearest locality/city name for the given coordinates.
+ * Fetches the nearest locality/city name for the given coordinates, plus the
+ * attribution required for whichever source resolved it.
  *
- * Tries Nominatim first (village-level accuracy) and falls back to BigDataCloud
- * if it errors. Returns null on total failure so callers fall back gracefully.
+ * Tries Nominatim first (village-level accuracy, requires OSM attribution) and
+ * falls back to BigDataCloud (no attribution requirement) if it errors. Returns
+ * { name: null, attribution: null } on total failure so callers degrade cleanly.
  *
  * @param lat       Latitude (precise — from browser geolocation, not centroid)
  * @param lng       Longitude
@@ -104,20 +118,7 @@ export async function fetchReverseGeocode(
   lng: number,
   signal?: AbortSignal,
 ): Promise<string | null> {
-  try {
-    const name = await fetchFromNominatim(lat, lng, signal);
-    if (name) return name;
-  } catch (err) {
-    // Don't fall through on an intentional abort — the caller cancelled.
-    if (err instanceof DOMException && err.name === 'AbortError') return null;
-  }
-
-  try {
-    return await fetchFromBigDataCloud(lat, lng, signal);
-  } catch {
-    // Covers AbortError, network failure, parse error
-    return null;
-  }
+  return fetchFromBigDataCloud(lat, lng, signal);
 }
 
 /**
